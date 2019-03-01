@@ -23,7 +23,7 @@ int main(){
 
 		SSocket.sin_family = AF_INET;
 		SSocket.sin_port = htons(25567);
-		inet_pton(AF_INET, "192.168.0.103", &(SSocket.sin_addr));
+		inet_pton(AF_INET, "127.0.0.1", &(SSocket.sin_addr));
 
 		connect(SendSocket, (struct sockaddr*) (&SSocket), sizeof(SSocket));
 		send(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);	
