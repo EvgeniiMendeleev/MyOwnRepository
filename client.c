@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 struct Position{
 
@@ -14,6 +15,7 @@ int main(){
 
 		struct Position Buffer;
 		printf("Enter coordinates of cell");
+
 		scanf(" %f %f", &Buffer.x, &Buffer.y);
 		int SendSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		
@@ -21,7 +23,7 @@ int main(){
 
 		SSocket.sin_family = AF_INET;
 		SSocket.sin_port = htons(25567);
-		SSocket.sin_addr.s_addr = htonl(INADDR_ANY);
+		inet_pton(AF_INET, "192.168.0.103", &(SSocket.sin_addr));
 
 		connect(SendSocket, (struct sockaddr*) (&SSocket), sizeof(SSocket));
 		send(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);	
