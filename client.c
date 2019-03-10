@@ -70,16 +70,14 @@ int main(){
 
 		if(state == Turn){
 
-			printf("%d\n", state);
 			printf("\nEnter coordinates of cell: ");
 			scanf("%f %f", &Buffer.x, &Buffer.y);
 			send(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
 			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 		}
 		else if(state == WaitingOfTurn){
-
+			
 			printf("Waiting\n");
-			printf("%d\n", state);
 			recv(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
 			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 			printf("Shot in coordinates: %f %f", Buffer.x, Buffer.y);
