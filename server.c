@@ -6,14 +6,14 @@
 #include <unistd.h>
 #include <stdint.h>
 
-//-------------Состояния--------------------
+//-------------Состояния--------------------(Надо будет уточнить по поводу протокола)
 #define STOP -2
 #define WaitingOfConnection -1
 #define WaitingOfTurn 0
 #define Turn 1
 //------------------------------------------
 
-//---------Буфер памяти для координат-------
+//---------Пакет информации клиента---------
 struct Position{
 
 	float x, y;
@@ -65,20 +65,28 @@ int main()
 
 	sleep(5);
 
+	int_least8_t nextStateFirstPlayer = WaitingOfTurn, nextStateSecondPlayer = Turn;	//Следующее состояние клиента
+
 	while(1){
-		
+
 		struct Position Buffer;
 
-		recv(FirstPlayer, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
+		recv(FirstPlayer, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);	
 		
-		printf("\nEnemy position: %f %f", Buffer.x, Buffer.y);
-		
+		//-----------Проверка данных-------------------
+		//---------------------------------------------
+
 		send(SecondPlayer, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
+
+		//----Обмен состояниями: теперь первый игрок ждёт, а второй ходит----
+
+		send(FirstPlayer, &nextStateFirstPlayer, sizeof(nextStateFirstPlayer), MSG_NOSIGNAL);
+		send(SecondPlayer, &nextStateSecondPlayer, sizeof(nextStateSecondPlayer), MSG_NOSIGNAL);
 		
-		//--------Теперь ход другого игрока--------
 		int t = FirstPlayer;
 		FirstPlayer = SecondPlayer;
 		SecondPlayer = t;
+
 		//-----------------------------------------
 	}
 	//------------------------------------------------------------
