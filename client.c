@@ -14,17 +14,17 @@
 #define Turn 1
 //----------------------------------
 
-//-----------Координаты-------------
-struct Position{
+//----------Координаты корабля---------
+struct PositionOfShip{
 
 	float x, y;
 };
-//----------------------------------
+//-------------------------------------
 
 int main(){
 
 	//----------------------Создание клиентского сокета и подключение клиента------------------
-	int_least8_t state; //Текущее состояние клиента
+	int_least8_t state;
 
 	int SendSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -41,8 +41,8 @@ int main(){
 	}
 	//-----------------------------------------------------------------------------------------
 
+
 	//---------------Ожидание второго игрока------------------
-	printf("Waiting of second player\n");
 	
 	//Читаем состояние клиента.
 	//Если мы будем ожидать подключение, то значит это был первый игрок,
@@ -50,10 +50,9 @@ int main(){
 	//состояние ОЖИДАНИЕ ХОДА ПРОТИВНИКА на сервере.
 	recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 
-	printf("%d\n", state);
-
 	while(state == WaitingOfConnection){
-	
+
+		printf("Waiting of player\n");
 		recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 	}
 	//--------------------------------------------------------
@@ -64,23 +63,26 @@ int main(){
 	sleep(5);
 
 	while(1){
-		struct Position Buffer;
+
+		struct PositionOfShip Buffer;
 
 		system("clear");
 
 		if(state == Turn){
 
+			printf("%d\n", state);
 			printf("\nEnter coordinates of cell: ");
 			scanf("%f %f", &Buffer.x, &Buffer.y);
 			send(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
-			state = WaitingOfTurn;
+			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 		}
 		else if(state == WaitingOfTurn){
 
 			printf("Waiting\n");
+			printf("%d\n", state);
 			recv(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
+			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 			printf("Shot in coordinates: %f %f", Buffer.x, Buffer.y);
-			state = Turn;
 		}
 	}
 	//-------------------------------------------------------------
