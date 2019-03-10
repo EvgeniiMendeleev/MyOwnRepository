@@ -46,6 +46,11 @@ int main()
 		int_least8_t state = WaitingOfConnection;
 		send(FirstPlayer, &state, sizeof(state), MSG_NOSIGNAL);
 	}
+	else{
+	
+		printf("Connection had failed\n");
+		return 0;
+	}
 
 	int SecondPlayer = accept(MasterSocket, 0, 0);
 
@@ -56,6 +61,11 @@ int main()
 		uint_least8_t stateSecondPlayer = WaitingOfTurn;
 		send(FirstPlayer, &stateFirstPlayer, sizeof(stateFirstPlayer), MSG_NOSIGNAL);
 		send(SecondPlayer, &stateSecondPlayer, sizeof(stateSecondPlayer), MSG_NOSIGNAL);
+	}
+	else {
+	
+		printf("Connection had failed\n");
+		return 0;
 	}
 
 	//---------------------------------------------------------
@@ -86,6 +96,8 @@ int main()
 		int t = FirstPlayer;
 		FirstPlayer = SecondPlayer;
 		SecondPlayer = t;
+
+		printf("X = %f, Y = %f\n", Buffer.x, Buffer.y);
 
 		//-----------------------------------------
 	}
