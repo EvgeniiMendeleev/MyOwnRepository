@@ -32,7 +32,7 @@ int main(){
 
 	SSocket.sin_family = AF_INET;
 	SSocket.sin_port = htons(25567);
-	inet_pton(AF_INET, "10.10.1.227", &(SSocket.sin_addr));
+	inet_pton(AF_INET, "192.168.0.103", &(SSocket.sin_addr));
 
 	if(connect(SendSocket, (struct sockaddr*) (&SSocket), sizeof(SSocket)) == -1){
 
@@ -47,10 +47,10 @@ int main(){
 	//Читаем состояние клиента.
 	//Если мы будем ожидать подключение, то значит это был первый игрок,
 	//иначе это был второй игрок, и мы идём дальше, давая второму игроку
-	//состояние ОЖИДАНИЕ ХОДА ПРОТИВНИКА на сервере.
+	//состояние ОЖИДАНИЕ ХОДА ПРОТИВНИКА, отправляя с сервера.
 	recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 
-	while(state == WaitingOfConnection){
+	if(state == WaitingOfConnection){
 
 		printf("Waiting of player\n");
 		recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
@@ -73,12 +73,16 @@ int main(){
 			printf("\nEnter coordinates of cell: ");
 			scanf("%f %f", &Buffer.x, &Buffer.y);
 			send(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
+			
+			//Чтение следующего состояния клиента.
 			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 		}
 		else if(state == WaitingOfTurn){
 			
 			printf("Waiting\n");
 			recv(SendSocket, &Buffer, sizeof(Buffer), MSG_NOSIGNAL);
+
+			//Чтение следующего состояния клиента.
 			recv(SendSocket, &state, sizeof(state), MSG_NOSIGNAL);
 			printf("Shot in coordinates: %f %f", Buffer.x, Buffer.y);
 		}
