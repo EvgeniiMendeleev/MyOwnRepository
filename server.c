@@ -97,8 +97,6 @@ int main()
 		FirstPlayer = SecondPlayer;
 		SecondPlayer = t;
 
-		printf("X = %f, Y = %f\n", Buffer.x, Buffer.y);
-
 		//-----------------------------------------
 	}
 	//------------------------------------------------------------
