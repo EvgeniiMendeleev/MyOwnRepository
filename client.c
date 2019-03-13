@@ -24,7 +24,7 @@ struct PositionOfShip{
 int main(){
 
 	//----------------------Создание клиентского сокета и подключение клиента------------------
-	int_least8_t state;
+	int_least8_t state;	//Текущее состояние клиента
 
 	int SendSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
