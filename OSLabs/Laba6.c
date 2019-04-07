@@ -54,8 +54,6 @@ int main(int argv, char* argc[])
     int MaxValue = atoi(argc[3]);
     int MinValue = atoi(argc[2]);
 
-
-   // std::cin >> N >> MinValue >> MaxValue;
     int semId = semget(IPC_PRIVATE, N, 0600|IPC_CREAT);
 
     if(semId < 0)
@@ -76,7 +74,7 @@ int main(int argv, char* argc[])
 
     for(int i = 0; i < N; i++)
     {   
-	Array[i] = rand() % MaxValue + MinValue;
+	Array[i] = rand() % (MaxValue - 1) + MinValue;
 
         printf("%i: %i\n", semctl(semId, i, GETVAL, 0), Array[i]);
     }
@@ -93,13 +91,14 @@ int main(int argv, char* argc[])
     {
         for(int i = 0; i < N; i++)
         {
-            for(int j = 0; j < N; j++)
+            for(int j = i + 1; j < N; j++)
             {
 		 Put(semId, i);
 		 Put(semId, j);
 
 		 sleep(1);
-               	 if(Array[i] > Array[j])
+
+		 if(Array[i] > Array[j])
 		 {
 			int t = Array[i];
                     	Array[i] = Array[j];
@@ -121,10 +120,10 @@ int main(int argv, char* argc[])
         {
             count = count + 1;
 
+	    printf("\n");
             printf("New iteration: %i\n", count);
             printf("---------------------------------\n");
 
-	    sleep(1);
             for(int i = 0; i < N; i++)
 	    {
                 if(semctl(semId, i, GETVAL) == 0)
@@ -136,6 +135,7 @@ int main(int argv, char* argc[])
                     printf("In waiting: %i\n", Array[i]);
                 }
             }
+	    sleep(1);
         }
 
         printf("=======================================\n");
