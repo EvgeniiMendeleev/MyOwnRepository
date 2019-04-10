@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <stdint.h>
 
-//-------------Состояния--------------------(Надо будет уточнить по поводу протокола)
+//-------------Состояния--------------------
 #define STOP -2
 #define WaitingOfConnection -1
 #define WaitingOfTurn 0
