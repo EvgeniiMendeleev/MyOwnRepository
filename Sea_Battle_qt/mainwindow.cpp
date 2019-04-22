@@ -1,23 +1,20 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-//---Библиотеки для работы с сокетами Беркли-
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-//-------------------------------------------
-
-#include <battle.h>
-#include <QDebug>
+#define WidthOFrame 700
+#define HeightOfFrame 500
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    setFixedSize(QSize(690, 500));
 
-    setFixedSize(QSize(700, 500));
+    ui->Frame->setFixedSize(QSize(WidthOFrame, HeightOfFrame));
+    ui->Frame->hide();
+    ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
 }
 
 MainWindow::~MainWindow()
@@ -40,7 +37,7 @@ void MainWindow::on_Connection_clicked()
 
     qDebug() << IP;
 
-    int ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if(ClientSocket < 0)
     {
@@ -55,15 +52,55 @@ void MainWindow::on_Connection_clicked()
 
     if(::connect(ClientSocket, (struct sockaddr*) (&ServerAddr), sizeof(ServerAddr)) != -1)
     {
-        ui->BackgroundForMainMenu->hide();
-        ui->String_For_IPaddress->hide();
-        ui->Connection->hide();
-        ui->Name->hide();
-
-        Preparing_for_Battle(ClientSocket);
+        Preparing_for_Battle();
     }
     else
     {
         qDebug() << "error\n";
     }
 }
+
+void MainWindow::Preparing_for_Battle()
+{
+    ui->BackgroundForMainMenu->hide();
+    ui->String_For_IPaddress->hide();
+    ui->Connection->hide();
+    ui->Name->hide();
+
+    scene = new QGraphicsScene();
+
+    BattleField.load(":/img/PlacingShips.png");
+    BattleField = BattleField.scaled(WidthOFrame, HeightOfFrame, Qt::KeepAspectRatio);
+
+    scene->addPixmap(BattleField);
+
+    Ship* MyShip = new Ship;
+    MyShip->setPos(50, 50);
+    scene->addItem(MyShip);
+
+    ui->Frame->setScene(scene);
+    ui->Frame->show();
+
+}
+
+
+/* //fork()
+ int ship_count = 5;
+ while(ship_count > 0)
+ {
+
+     //pасстановка корабля
+     --ship_count;
+ }
+
+ Qtimer или поток
+ for(;;)
+ {
+     QPoint pos;
+
+     if(QApplication::mouseButtons() == Qt::LeftButton)
+     {
+         pos = QWidget::mapFromGlobal(QCursor::pos());
+         qDebug() << pos.x() << pos.y();
+     }
+ }*/
