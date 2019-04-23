@@ -1,8 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#define WidthOfFrame 700
-#define HeightOfFrame 500
+#define WidthOFrame   701 //700
+#define HeightOfFrame 481 //500
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     setFixedSize(QSize(690, 500));
 
-    ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
+    ui->Frame->setFixedSize(QSize(WidthOFrame, HeightOfFrame - 20));
     ui->Frame->hide();
     ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
     ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
@@ -62,28 +62,65 @@ void MainWindow::on_Connection_clicked()
 
 void MainWindow::Preparing_for_Battle()
 {
-    ui->BackgroundForMainMenu->hide();
-    ui->String_For_IPaddress->hide();
-    ui->Connection->hide();
-    ui->Name->hide();
+    Main_Menu_off();
 
     scene = new QGraphicsScene();
 
-    BattleField.load(":/img/PlacingShips.png");
-    BattleField = BattleField.scaled(WidthOFrame, HeightOfFrame, Qt::KeepAspectRatio);
+    frame.load(":/img/PlacingShips.png");
+    frame = frame.scaled(WidthOFrame, HeightOfFrame, Qt::KeepAspectRatio);
+    scene->addPixmap(frame);
 
-    scene->addPixmap(BattleField);
+    MyShips.resize(10);
 
-    Ship* MyShip = new Ship;
-    MyShip->setPos(50, 50);
-    scene->addItem(MyShip);
+    //Отображаем четырёхпалубник
+    MyShips[0] = new Ship(4);
+    MyShips[0]->set_x(30);
+    MyShips[0]->set_y(92);
+    MyShips[0]->setPos(MyShips[0]->get_x(), MyShips[0]->get_y());
+    scene->addItem(MyShips[0]);
+
+    //Отображаем трёхпалубники
+    for(int i = 1; i < 3; i++)
+    {
+        MyShips[i] = new Ship(3);
+        MyShips[i]->set_x(30 + (i - 1) * 50);
+        MyShips[i]->set_y(115);
+        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        scene->addItem(MyShips[i]);
+    }
+
+    //Отображаем двухпалубники
+    for(int i = 3; i < 6; i++)
+    {
+        MyShips[i] = new Ship(2);
+        MyShips[i]->set_x(30 + (i - 3) * 35);
+        MyShips[i]->set_y(137);
+        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        scene->addItem(MyShips[i]);
+    }
+
+    //Отображаем однопалубники
+    for(int i = 6; i < 10; i++)
+    {
+        MyShips[i] = new Ship(1);
+        MyShips[i]->set_x(30 + (i - 6) * 25);
+        MyShips[i]->set_y(158);
+        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        scene->addItem(MyShips[i]);
+    }
 
     ui->Frame->setScene(scene);
     ui->Frame->show();
 
 }
 
-
+void MainWindow::Main_Menu_off()
+{
+    ui->BackgroundForMainMenu->hide();
+    ui->String_For_IPaddress->hide();
+    ui->Connection->hide();
+    ui->Name->hide();
+}
 /* //fork()
  int ship_count = 5;
  while(ship_count > 0)
