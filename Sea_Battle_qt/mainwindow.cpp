@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#define WidthOFrame   701 //700
+#define WidthOfFrame   701 //700
 #define HeightOfFrame 481 //500
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     setFixedSize(QSize(690, 500));
 
-    ui->Frame->setFixedSize(QSize(WidthOFrame, HeightOfFrame - 20));
+    ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame - 20));
     ui->Frame->hide();
     ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
     ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
