@@ -34,6 +34,8 @@ public:
 private slots:
     void on_Connection_clicked();                //Кнопка подключения в главном меню.
 
+    void on_BattleButton_clicked();
+
 private:
     Ui::MainWindow *ui;     //Главное меню.
     int ClientSocket;       //Сокет клиента, с помощью которого будет общение с сервером.
@@ -49,8 +51,6 @@ private:
     //i = 1,2 - трёхпалубники
     //i = 3,5 - двухпалубники
     //i = 6,9 - однопалубники
-
-    int* tmpbuffer;         //Временный буфер для поля с кораблями.
 };
 
 #endif // MAINWINDOW_H
