@@ -1,20 +1,27 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#define WidthOfFrame   701 //700
-#define HeightOfFrame 481 //500
+//Old official size of window: width = 580, height = 420
+//New official size of window: width = 573, height = 415
+//The newest than new official size of window: width = 580, height = 415
+
+#define WidthOfFrame   580
+#define HeightOfFrame 415
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setFixedSize(QSize(690, 500));
 
-    ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame - 20));
+    setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
+
+    ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
     ui->Frame->hide();
-    ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
-    ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
+    ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
+
+    ui->BattleButton->hide();
 }
 
 MainWindow::~MainWindow()
@@ -56,36 +63,44 @@ void MainWindow::on_Connection_clicked()
     }
     else
     {
-        qDebug() << "error\n";
+        qDebug() << "Error with connection\n";
     }
 }
 
 void MainWindow::Preparing_for_Battle()
 {
+    //Отключаем главное меню, чтобы перейти к подготовке к битве
     Main_Menu_off();
 
+    //Создаём сцену, на которой будет фрейм с подготовкой к битве
     scene = new QGraphicsScene();
 
-    frame.load(":/img/PlacingShips.png");
-    frame = frame.scaled(WidthOFrame, HeightOfFrame, Qt::KeepAspectRatio);
+    //Загружаем бэкграунд и подгоняем под размер фрейма.
+    frame.load(":/img/PreparingForBattle.png");
+    frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
+    //Отображаем все корабли. Всего их 10:
+    //1 - четырёхпалубник
+    //2 - трёхпалубника
+    //3 - двухпалубников
+    //4 - однопалубников
     MyShips.resize(10);
 
     //Отображаем четырёхпалубник
     MyShips[0] = new Ship(4);
-    MyShips[0]->set_x(30);
-    MyShips[0]->set_y(92);
-    MyShips[0]->setPos(MyShips[0]->get_x(), MyShips[0]->get_y());
+    MyShips[0]->set_x0(28); //10
+    MyShips[0]->set_y0(149); //92
+    MyShips[0]->setPos(28, 149);
     scene->addItem(MyShips[0]);
 
     //Отображаем трёхпалубники
     for(int i = 1; i < 3; i++)
     {
         MyShips[i] = new Ship(3);
-        MyShips[i]->set_x(30 + (i - 1) * 50);
-        MyShips[i]->set_y(115);
-        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        MyShips[i]->set_x0(28 + (i - 1) * 100);
+        MyShips[i]->set_y0(196);
+        MyShips[i]->setPos(28 + (i - 1) * 100, 196);
         scene->addItem(MyShips[i]);
     }
 
@@ -93,9 +108,9 @@ void MainWindow::Preparing_for_Battle()
     for(int i = 3; i < 6; i++)
     {
         MyShips[i] = new Ship(2);
-        MyShips[i]->set_x(30 + (i - 3) * 35);
-        MyShips[i]->set_y(137);
-        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        MyShips[i]->set_x0(28 + (i - 3) * 70);
+        MyShips[i]->set_y0(243);
+        MyShips[i]->setPos(28 + (i - 3) * 70, 243);
         scene->addItem(MyShips[i]);
     }
 
@@ -103,15 +118,17 @@ void MainWindow::Preparing_for_Battle()
     for(int i = 6; i < 10; i++)
     {
         MyShips[i] = new Ship(1);
-        MyShips[i]->set_x(30 + (i - 6) * 25);
-        MyShips[i]->set_y(158);
-        MyShips[i]->setPos(MyShips[i]->get_x(), MyShips[i]->get_y());
+        MyShips[i]->set_x0(28 + (i - 6) * 40);
+        MyShips[i]->set_y0(290);
+        MyShips[i]->setPos(28 + (i - 6) * 40, 290);
         scene->addItem(MyShips[i]);
     }
 
+    ui->BattleButton->show();
+
+    //Отображаем фрейм с подготовкой к битве.
     ui->Frame->setScene(scene);
     ui->Frame->show();
-
 }
 
 void MainWindow::Main_Menu_off()
@@ -121,6 +138,13 @@ void MainWindow::Main_Menu_off()
     ui->Connection->hide();
     ui->Name->hide();
 }
+
+void MainWindow::on_BattleButton_clicked()
+{
+
+}
+
+
 /* //fork()
  int ship_count = 5;
  while(ship_count > 0)
