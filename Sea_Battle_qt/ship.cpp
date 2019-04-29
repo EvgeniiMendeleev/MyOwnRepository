@@ -63,8 +63,8 @@ void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
 
-    qDebug() << this->pos().x() << this->pos().y() << "\n";
-    qDebug() << "x and y of Mouse: " << mapToScene(event->pos().x(), event->pos().y());
+    //qDebug() << this->pos().x() << this->pos().y() << "\n";
+    //qDebug() << "x of Mouse: " << mapToScene(event->pos().x(), event->pos().y());
 }
 
 void Ship::mousePressEvent(QGraphicsSceneMouseEvent* event)
@@ -87,26 +87,32 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             int i = k;
             int j = m;
 
-            qDebug() << "i = " << i << "\n";
-            qDebug() << "j = " << j << "\n";
+            if(j + typeOfShip - 1 >= 10)
+            {
+                this->setPos(x0, y0);
+                return;
+            }
 
-            if((this->typeOfShip == 2) && (j + 1 >= 10))
-            {
-                this->setPos(x0, y0);
-                return;
-            }
-            else if((this->typeOfShip == 3) && (j + 2 >= 10))
-            {
-                this->setPos(x0, y0);
-                return;
-            }
-            else if((this->typeOfShip == 4) && (j + 3 >= 10))
-            {
-                this->setPos(x0, y0);
-                return;
-            }
+            //aroundShip(i, j);
 
             this->setPos(250 + 31 * j + 2, 86 + 30 * i);
+
+            for(int k = j; k < j + typeOfShip; k++)
+            {
+                MainWindow::tmpBuffer[i][k]= typeOfShip;
+            }
+
+            qDebug()<<"This is your Field:";
+            for(int k=0; k<=9; k++)
+            {
+                QString s;
+                for(int l=0; l<=9; l++)
+                {
+                    s+= QString::number(MainWindow::tmpBuffer[k][l]) + " ";
+                }
+                qDebug() << s;
+            }
+
             this->x = this->pos().x();
             this->y = this->pos().y();
         }
@@ -127,23 +133,32 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             int i = k;
             int j = m;
 
-            if((this->typeOfShip == 2) && (i + 1 >= 10))
-            {
-                this->setPos(x0, y0);
-                return;
-            }
-            else if((this->typeOfShip == 3) && (i + 2 >= 10))
-            {
-                this->setPos(x0, y0);
-                return;
-            }
-            else if((this->typeOfShip == 4) && (i + 3 >= 10))
+            if(i + typeOfShip - 1 >= 10)
             {
                 this->setPos(x0, y0);
                 return;
             }
 
+            //aroundShip(i, j);
+
             this->setPos(248 + 31 * j + 38, 86 + 30 * i);
+
+            for(int k = i; k < i + typeOfShip; k++)
+            {
+                MainWindow::tmpBuffer[k][j] = typeOfShip;
+            }
+
+            qDebug()<<"This is your Field:";
+            for(int k=0; k<=9; k++)
+            {
+                QString s;
+                for(int l=0; l<=9; l++)
+                {
+                    s+= QString::number(MainWindow::tmpBuffer[k][l]) + " ";
+                }
+                qDebug() << s;
+            }
+
             this->x = this->pos().x() - 31;
             this->y = this->pos().y();
         }
@@ -176,6 +191,58 @@ void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
     }
 
     Q_UNUSED(event);
+}
+
+bool Ship::checkPlace(int i, int j)
+{
+    if(isHorisontal)
+    {
+        if(j - 1 < 0 && i - 1 < 0)
+        {
+
+        }
+        else if(j + typeOfShip >= 10 && i - 1 < 0)
+        {
+
+        }
+        else if(i - 1 < 0)
+        {
+
+        }
+        else if(j - 1 < 0 && i + 1 >= 10)
+        {
+
+        }
+        else if(j + typeOfShip >= 10 && i + 1 >= 10)
+        {
+
+        }
+        else if(i + 1 >= 10)
+        {
+
+        }
+        else if(j - 1 < 0)
+        {
+
+        }
+        else if(j + typeOfShip >= 10 )
+        {
+
+        }
+        else
+        {
+
+        }
+    }
+    else
+    {
+
+    }
+}
+
+bool Ship::aroundShip(int i, int j)
+{
+
 }
 
 void Ship::set_x0(int x)
