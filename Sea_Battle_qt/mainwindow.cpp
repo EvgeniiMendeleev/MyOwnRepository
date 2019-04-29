@@ -8,6 +8,8 @@
 #define WidthOfFrame   580
 #define HeightOfFrame 415
 
+int table[10][10] = {};
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -143,7 +145,6 @@ void MainWindow::on_BattleButton_clicked()
 {
 
 }
-
 
 /* //fork()
  int ship_count = 5;
