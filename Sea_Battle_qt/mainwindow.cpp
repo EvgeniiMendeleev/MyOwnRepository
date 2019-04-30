@@ -8,8 +8,6 @@
 #define WidthOfFrame   580
 #define HeightOfFrame 415
 
-int table[10][10] = {};
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -82,6 +80,20 @@ void MainWindow::Preparing_for_Battle()
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
+    memID = shmget(IPC_PRIVATE, 100 * sizeof(int), 0600|IPC_CREAT|IPC_EXCL);
+
+    if(memID < 0)
+    {
+        qDebug() << "Error with shmget()";
+    }
+
+    table = (int*)shmat(memID, 0, 0);
+
+    for(int i = 0; i < 100; i++)
+    {
+        table[i] = 0;
+    }
+
     //Отображаем все корабли. Всего их 10:
     //1 - четырёхпалубник
     //2 - трёхпалубника
@@ -90,7 +102,7 @@ void MainWindow::Preparing_for_Battle()
     MyShips.resize(10);
 
     //Отображаем четырёхпалубник
-    MyShips[0] = new Ship(4);
+    MyShips[0] = new Ship(4, memID);
     MyShips[0]->set_x0(28); //10
     MyShips[0]->set_y0(149); //92
     MyShips[0]->setPos(28, 149);
@@ -99,7 +111,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем трёхпалубники
     for(int i = 1; i < 3; i++)
     {
-        MyShips[i] = new Ship(3);
+        MyShips[i] = new Ship(3, memID);
         MyShips[i]->set_x0(28 + (i - 1) * 100);
         MyShips[i]->set_y0(196);
         MyShips[i]->setPos(28 + (i - 1) * 100, 196);
@@ -109,7 +121,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем двухпалубники
     for(int i = 3; i < 6; i++)
     {
-        MyShips[i] = new Ship(2);
+        MyShips[i] = new Ship(2, memID);
         MyShips[i]->set_x0(28 + (i - 3) * 70);
         MyShips[i]->set_y0(243);
         MyShips[i]->setPos(28 + (i - 3) * 70, 243);
@@ -119,7 +131,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем однопалубники
     for(int i = 6; i < 10; i++)
     {
-        MyShips[i] = new Ship(1);
+        MyShips[i] = new Ship(1, memID);
         MyShips[i]->set_x0(28 + (i - 6) * 40);
         MyShips[i]->set_y0(290);
         MyShips[i]->setPos(28 + (i - 6) * 40, 290);
@@ -144,6 +156,25 @@ void MainWindow::Main_Menu_off()
 void MainWindow::on_BattleButton_clicked()
 {
 
+    qDebug()<<"This is your Field:";
+    for(int i = 0; i < 10; i++)
+    {
+        QString s;
+        for(int j = 0; j < 10; j++)
+        {
+            s+= QString::number(table[10 * i + j]) + " ";
+        }
+        qDebug() << s;
+    }
+
+    for(int i = 0; i < 10; i++)
+    {
+        if(!MyShips[i]->onTable())
+        {
+            QMessageBox::information(this, "Ошибка", "Не все корабли расставлены на поле");
+            return;
+        }
+    }
 }
 
 /* //fork()
