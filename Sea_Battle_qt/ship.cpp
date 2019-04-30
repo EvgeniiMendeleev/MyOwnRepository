@@ -1,10 +1,11 @@
 #include "ship.h"
 #include <QDebug>
 
-Ship::Ship(int TypeOfShip, QObject* parent):QObject(parent), QGraphicsItem()
+Ship::Ship(int TypeOfShip, int memID, QObject* parent):QObject(parent), QGraphicsItem()
 {
     centerY = 21;
     typeOfShip = TypeOfShip;
+    memId = memID;
 
     switch(TypeOfShip)
     {
@@ -62,13 +63,15 @@ void Ship::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
 void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
-
-    //qDebug() << this->pos().x() << this->pos().y() << "\n";
-    //qDebug() << "x of Mouse: " << mapToScene(event->pos().x(), event->pos().y());
 }
 
 void Ship::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    if(onPlace)
+    {
+        clearFromShip();
+    }
+
     this->setCursor(QCursor(Qt::ClosedHandCursor));
     Q_UNUSED(event);
 }
@@ -90,37 +93,39 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if(j + typeOfShip - 1 >= 10)
             {
                 this->setPos(x0, y0);
-                return;
+                onPlace = false;
             }
-
-            //aroundShip(i, j);
-
-            this->setPos(250 + 31 * j + 2, 86 + 30 * i);
-
-            for(int k = j; k < j + typeOfShip; k++)
+            else
             {
-                MainWindow::tmpBuffer[i][k]= typeOfShip;
-            }
+                int* table = (int*)shmat(memId, 0, 0);
 
-            qDebug()<<"This is your Field:";
-            for(int k=0; k<=9; k++)
-            {
-                QString s;
-                for(int l=0; l<=9; l++)
+                if(checkPlace(table, i, j))
                 {
-                    s+= QString::number(MainWindow::tmpBuffer[k][l]) + " ";
-                }
-                qDebug() << s;
-            }
+                    this->setPos(250 + 31 * j + 2, 86 + 30 * i);
 
-            this->x = this->pos().x();
-            this->y = this->pos().y();
+                    for(int l = j; l < j + typeOfShip; l++)
+                    {
+                        table[10 * i + l] = typeOfShip;
+                    }
+
+                    this->x = this->pos().x();
+                    this->y = this->pos().y();
+                    this->onPlace = true;
+                }
+                else
+                {
+                    qDebug() << "Another ship is near!\n";
+                    this->setPos(x0, y0);
+                    onPlace = false;
+                }
+            }
         }
         else
         {
             this->setPos(x0, y0);
             this->x = x0;
             this->y = y0;
+            this->onPlace = false;
         }
     }
     else
@@ -136,39 +141,42 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if(i + typeOfShip - 1 >= 10)
             {
                 this->setPos(x0, y0);
-                return;
+                onPlace = false;
             }
-
-            //aroundShip(i, j);
-
-            this->setPos(248 + 31 * j + 38, 86 + 30 * i);
-
-            for(int k = i; k < i + typeOfShip; k++)
+            else
             {
-                MainWindow::tmpBuffer[k][j] = typeOfShip;
-            }
+                int* table = (int*)shmat(memId, 0, 0);
 
-            qDebug()<<"This is your Field:";
-            for(int k=0; k<=9; k++)
-            {
-                QString s;
-                for(int l=0; l<=9; l++)
+                if(checkPlace(table, i, j))
                 {
-                    s+= QString::number(MainWindow::tmpBuffer[k][l]) + " ";
-                }
-                qDebug() << s;
-            }
+                    this->setPos(248 + 31 * j + 38, 86 + 30 * i);
 
-            this->x = this->pos().x() - 31;
-            this->y = this->pos().y();
+                    for(int k = i; k < i + typeOfShip; k++)
+                    {
+                        table[10 * k + j] = typeOfShip;
+                    }
+
+                    this->x = this->pos().x() - 31;
+                    this->y = this->pos().y();
+                    this->onPlace = true;
+                }
+                else
+                {
+                    this->setPos(this->x0, this->y0);
+                    this->x = x0;
+                    this->y = y0;
+                    this->onPlace = false;
+                    qDebug() << "Another ship is near!\n";
+                }
+            }
         }
         else
         {
             this->setPos(this->x0, this->y0);
             this->x = x0;
             this->y = y0;
+            this->onPlace = false;
         }
-
     }
 
     this->setCursor(QCursor(Qt::ArrowCursor));
@@ -177,15 +185,21 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    setZValue(1);
+    if(onPlace)
+    {
+        clearFromShip();
+    }
 
     if(isHorisontal)
     {
+
+        setZValue(1);
         setRotation(90);
         isHorisontal = false;
     }
     else
     {
+        setZValue(0);
         setRotation(0);
         isHorisontal = true;
     }
@@ -193,56 +207,131 @@ void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
     Q_UNUSED(event);
 }
 
-bool Ship::checkPlace(int i, int j)
+bool Ship::checkPlace(int* table, int i0, int j0)
 {
     if(isHorisontal)
     {
-        if(j - 1 < 0 && i - 1 < 0)
+        if(j0 - 1 < 0 && i0 - 1 < 0)    //Верхний левый угол
         {
-
+            if(!aroundShip(table, i0, j0, i0 + 1, j0 + typeOfShip)) return false;
         }
-        else if(j + typeOfShip >= 10 && i - 1 < 0)
+        else if(j0 + typeOfShip >= 10 && i0 - 1 < 0)    //Верхний правый угол
         {
-
+            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
         }
-        else if(i - 1 < 0)
+        else if(i0 - 1 < 0)    //Верх
         {
-
+            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
         }
-        else if(j - 1 < 0 && i + 1 >= 10)
+        else if(j0 - 1 < 0 && i0 + 1 >= 10) //Нижний левый угол
         {
-
+            if(!aroundShip(table, i0 - 1, j0, i0, j0 + typeOfShip)) return false;
         }
-        else if(j + typeOfShip >= 10 && i + 1 >= 10)
+        else if(j0 + typeOfShip >= 10 && i0 + 1 >= 10) //Нижний правый угол
         {
-
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0, j0 + typeOfShip - 1)) return false;
         }
-        else if(i + 1 >= 10)
+        else if(i0 + 1 >= 10) //Низ
         {
-
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0, j0 + typeOfShip)) return false;
         }
-        else if(j - 1 < 0)
+        else if(j0 - 1 < 0)
         {
-
+            if(!aroundShip(table, i0 - 1, j0, i0 + 1, j0 + typeOfShip)) return false;
         }
-        else if(j + typeOfShip >= 10 )
+        else if(j0 + typeOfShip >= 10)
         {
-
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 2, j0 + typeOfShip)) return false;
         }
         else
         {
-
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
         }
     }
     else
     {
-
+        if(j0 - 1 < 0 && i0 - 1 < 0)    //Верхний левый угол
+        {
+            if(!aroundShip(table, i0, j0, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else if(j0 + typeOfShip >= 10 && i0 - 1 < 0)    //Верхний правый угол
+        {
+            if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0)) return false;
+        }
+        else if(i0 - 1 < 0)    //Верх
+        {
+            if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else if(j0 - 1 < 0 && i0 + 1 >= 10) //Нижний левый угол
+        {
+            if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else if(j0 + typeOfShip >= 10 && i0 + 1 >= 10) //Нижний правый угол
+        {
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
+        }
+        else if(i0 + 1 >= 10) //Низ
+        {
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else if(j0 - 1 < 0)
+        {
+            if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else if(j0 + typeOfShip >= 10)
+        {
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+        }
+        else
+        {
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+        }
     }
+
+    return true;
 }
 
-bool Ship::aroundShip(int i, int j)
+bool Ship::onTable()
 {
+    if(this->onPlace) return true;
+    else return false;
+}
 
+bool Ship::aroundShip(int* table, int i0, int j0, int k, int l)
+{   
+    for(int i = i0; i <= k; i++)
+    {
+        for(int j = j0; j <= l; j++)
+        {
+            if(table[10 * i + j] != 0)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+void Ship::clearFromShip()
+{
+    int* table = (int*)shmat(memId, 0, 0);
+
+    int i0 = (y - 86) / 30;
+    int j0 = (x - 250) / 31;
+
+    if(isHorisontal)
+    {
+        for(int j = j0; j < j0 + typeOfShip; j++)
+        {
+            table[10 * i0 + j] = 0;
+        }
+    }
+    else
+    {
+        for(int i = i0; i < i0 + typeOfShip; i++)
+        {
+            table[10 * i + j0] = 0;
+        }
+    }
 }
 
 void Ship::set_x0(int x)
@@ -264,36 +353,3 @@ int Ship::get_y()
 {
     return y;
 }
-/*if(isHorisontal)
-{
-    int j = (this->pos().y() - 86 + height / 3) / 30;
-    int i = (this->pos().x() - 248 + width / 6) / 31;
-
-    if(i >= 0 && j >= 0)
-    {
-        this->setPos(248 + 31 * i, 86 + 30 * j);
-    }
-    else
-    {
-        this->setPos(this->x0, this->y0);
-    }
-}
-else
-{
-    int j = (this->pos().x() - 248 + 3 * height / 2) / 31;
-    int i = (this->pos().y() - 86 - 2 * height / 3) / 30;
-
-    if(i >= 0 && j >= 0)
-    {
-        //this->setPos(248 + 31 * j - 3 * height / 2, 86 + 30 * i);
-    }
-    else
-    {
-        this->setPos(this->x0, this->y0);
-    }
-}*/
-
-/*qDebug() << "height of Rect: " << this->boundingRect().height();
-qDebug() << "width of Rect: " << this->boundingRect().width();
-qDebug() << "x: " << this->boundingRect().topLeft().x();
-qDebug() << "y: " << this->boundingRect().topLeft().y();*/
