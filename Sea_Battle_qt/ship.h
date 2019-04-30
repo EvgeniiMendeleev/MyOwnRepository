@@ -6,22 +6,22 @@
 #include <QCursor>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include <sys/shm.h>
 
 class Ship: public QObject, public QGraphicsItem
 {
     Q_OBJECT
 public:
-    explicit Ship(int TypeOfShip, QObject* parent = 0);
+    explicit Ship(int TypeOfShip, int memID, QObject* parent = 0);
 
     void set_x0(int x);
     void set_y0(int y);
     int get_x();
     int get_y();
-    bool checkPlace(int i, int j);
+    bool checkPlace(int* table, int i0, int j0);
     bool onTable();
-    bool aroundShip(int i, int j);      //Проверка на рядом стоящие корабли.
+    bool aroundShip(int* table, int i0, int j0, int k, int l);                 //Проверка на рядом стоящие корабли.
+    void clearFromShip();
 
     ~Ship();
 signals:
@@ -44,6 +44,7 @@ private:
                                         //горизонтален он или вертикален.
     bool onPlace = false;               //Переменная, отвечающая за состояние на сетке: положен на игровую сетку или нет
     int centerX, centerY;               //Для корректировки захвата корабля.
+    int memId;
 
 public slots:
 
