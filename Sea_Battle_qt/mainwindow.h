@@ -9,6 +9,8 @@
 #include <QPixmap>
 #include <QDebug>
 #include <QVector>
+#include <QMessageBox>
+#include <sys/shm.h>
 
 //--Библиотеки для работы с сокетами Беркли--
 #include <sys/socket.h>
@@ -31,7 +33,6 @@ public:
     ~MainWindow();
      void Preparing_for_Battle(); //Функция для отображения фрейма с нераставленными кораблями и полем
      void Main_Menu_off();        //Функция для скрытия кадра главного меню
-     int tmpBuffer[10][10];
 
 private slots:
     void on_Connection_clicked();                //Кнопка подключения в главном меню.
@@ -53,6 +54,8 @@ private:
     //i = 1-2 - трёхпалубники
     //i = 3-5 - двухпалубники
     //i = 6-9 - однопалубники
+    int memID;
+    int* table;
 };
 
 #endif // MAINWINDOW_H
