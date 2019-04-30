@@ -63,7 +63,7 @@ void MainWindow::on_Connection_clicked()
     }
     else
     {
-        qDebug() << "Error with connection\n";
+        QMessageBox::information(this, "Ошибка", "Введён неправильный адрес или сервер не запущен");
     }
 }
 
