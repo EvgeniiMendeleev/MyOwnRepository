@@ -1,358 +1,199 @@
-#include "ship.h"
-#include <QDebug>
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
 
-Ship::Ship(int TypeOfShip, int memID, QObject* parent):QObject(parent), QGraphicsItem()
+//Old official size of window: width = 580, height = 420
+//New official size of window: width = 573, height = 415
+//The newest than new official size of window: width = 580, height = 415
+
+#define WidthOfFrame   580
+#define HeightOfFrame 415
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
 {
-    centerY = 21;
-    typeOfShip = TypeOfShip;
-    memId = memID;
+    ui->setupUi(this);
 
-    switch(TypeOfShip)
+    setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
+
+    ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
+    ui->Frame->hide();
+    ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
+    ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
+
+    ui->BattleButton->hide();
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::on_Connection_clicked()
+{
+    QString IPaddress = ui->String_For_IPaddress->text();
+
+    if(IPaddress == NULL)
     {
-        case 1:
-            width = 31;
-
-            centerX = width / 2;
-            TextureOfShip.load(":/img/1ship.png");
-            TextureOfShip = TextureOfShip.scaled(width, height, Qt::KeepAspectRatio);
-            break;
-
-        case 2:
-            width = 62;
-
-            centerX = width / 2;
-            TextureOfShip.load(":/img/2ship.png");
-            TextureOfShip = TextureOfShip.scaled(width, height, Qt::KeepAspectRatio);
-            break;
-
-        case 3:
-            width = 93;
-
-           centerX = width / 2;
-            TextureOfShip.load(":/img/3ship.png");
-            TextureOfShip = TextureOfShip.scaled(width, height, Qt::KeepAspectRatio);
-            break;
-
-        case 4:
-            width = 124;
-
-            centerX = width / 2;
-            TextureOfShip.load(":/img/4ship.jpg");
-            TextureOfShip = TextureOfShip.scaled(width, height, Qt::KeepAspectRatio);
-            break;
-    }
-}
-
-Ship::~Ship()
-{
-
-}
-
-QRectF Ship::boundingRect() const
-{
-    return QRectF (0, 0, width, height);
-}
-
-void Ship::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
-{
-    painter->drawPixmap(0, 0, TextureOfShip, 0, 0, width, height);
-    Q_UNUSED(option);
-    Q_UNUSED(widget);
-}
-
-void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
-{
-    this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
-}
-
-void Ship::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
-    setZValue(1);
-
-    if(onPlace)
-    {
-        clearFromShip();
+        qDebug() << "No string";
+        return;
     }
 
-    this->setCursor(QCursor(Qt::ClosedHandCursor));
-    Q_UNUSED(event);
-}
+    QByteArray tmp = IPaddress.toLatin1();
+    const char* IP = tmp.data();
 
-void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
-{
-    double k, m;           //Строка - столбец сетки с кораблями.
+    qDebug() << IP;
 
-    if(isHorisontal)
+    ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if(ClientSocket < 0)
     {
-        m = (this->pos().x() + height / 12 - 250) / 31;
-        k = (this->pos().y() + height / 3 - 86) / 30;
+        qDebug() << "Error with socket()";
+    }
 
-        if(k >= 0 && m >= 0)
-        {
-            int i = k;
-            int j = m;
+    struct sockaddr_in ServerAddr;
 
-            if(j + typeOfShip - 1 >= 10)
-            {
-                this->setPos(x0, y0);
-                onPlace = false;
-            }
-            else
-            {
-                int* table = (int*)shmat(memId, 0, 0);
+    ServerAddr.sin_family = AF_INET;
+    ServerAddr.sin_port = htons(25567);
+    inet_pton(AF_INET, IP, &(ServerAddr.sin_addr));
 
-                if(checkPlace(table, i, j))
-                {
-                    this->setPos(250 + 31 * j + 2, 86 + 30 * i);
-
-                    for(int l = j; l < j + typeOfShip; l++)
-                    {
-                        table[10 * i + l] = typeOfShip;
-                    }
-
-                    this->x = this->pos().x();
-                    this->y = this->pos().y();
-                    this->onPlace = true;
-                }
-                else
-                {
-                    qDebug() << "Another ship is near!\n";
-                    this->setPos(x0, y0);
-                    onPlace = false;
-                }
-            }
-        }
-        else
-        {
-            this->setPos(x0, y0);
-            this->x = x0;
-            this->y = y0;
-            this->onPlace = false;
-        }
+    if(::connect(ClientSocket, (struct sockaddr*) (&ServerAddr), sizeof(ServerAddr)) != -1)
+    {
+        Preparing_for_Battle();
     }
     else
     {
-        m = (this->pos().x() - height / 2 - 248) / 31;
-        k = (this->pos().y() + 18 - 86) / 30;
-
-        if(k >= 0 && m >= 0)
-        {
-            int i = k;
-            int j = m;
-
-            if(i + typeOfShip - 1 >= 10)
-            {
-                this->setPos(x0, y0);
-                onPlace = false;
-            }
-            else
-            {
-                int* table = (int*)shmat(memId, 0, 0);
-
-                if(checkPlace(table, i, j))
-                {
-                    this->setPos(248 + 31 * j + 38, 86 + 30 * i);
-
-                    for(int k = i; k < i + typeOfShip; k++)
-                    {
-                        table[10 * k + j] = typeOfShip;
-                    }
-
-                    this->x = this->pos().x() - 31;
-                    this->y = this->pos().y();
-                    this->onPlace = true;
-                }
-                else
-                {
-                    this->setPos(this->x0, this->y0);
-                    this->x = x0;
-                    this->y = y0;
-                    this->onPlace = false;
-                    qDebug() << "Another ship is near!\n";
-                }
-            }
-        }
-        else
-        {
-            this->setPos(this->x0, this->y0);
-            this->x = x0;
-            this->y = y0;
-            this->onPlace = false;
-        }
+        QMessageBox::information(this, "Ошибка", "Введён неправильный адрес или сервер не запущен");
     }
-
-    setZValue(0);
-    this->setCursor(QCursor(Qt::ArrowCursor));
-    Q_UNUSED(event);
 }
 
-void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
+void MainWindow::Preparing_for_Battle()
 {
-    if(onPlace)
+    //Отключаем главное меню, чтобы перейти к подготовке к битве
+    Main_Menu_off();
+
+    //Создаём сцену, на которой будет фрейм с подготовкой к битве
+    scene = new QGraphicsScene();
+
+    //Загружаем бэкграунд и подгоняем под размер фрейма.
+    frame.load(":/img/PreparingForBattle.png");
+    frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+    scene->addPixmap(frame);
+
+    memID = shmget(IPC_PRIVATE, 100 * sizeof(int), 0600|IPC_CREAT|IPC_EXCL);
+
+    if(memID < 0)
     {
-        clearFromShip();
+        qDebug() << "Error with shmget()";
     }
 
-    if(isHorisontal)
+    table = (int*)shmat(memID, 0, 0);
+
+    for(int i = 0; i < 100; i++)
     {
-        setZValue(1);
-        setRotation(90);
-        isHorisontal = false;
-    }
-    else
-    {
-        setZValue(0);
-        setRotation(0);
-        isHorisontal = true;
+        table[i] = 0;
     }
 
-    Q_UNUSED(event);
+    //Отображаем все корабли. Всего их 10:
+    //1 - четырёхпалубник
+    //2 - трёхпалубника
+    //3 - двухпалубников
+    //4 - однопалубников
+    MyShips.resize(10);
+
+    //Отображаем четырёхпалубник
+    MyShips[0] = new Ship(4, memID);
+    MyShips[0]->set_x0(28); //10
+    MyShips[0]->set_y0(149); //92
+    MyShips[0]->setPos(28, 149);
+    scene->addItem(MyShips[0]);
+
+    //Отображаем трёхпалубники
+    for(int i = 1; i < 3; i++)
+    {
+        MyShips[i] = new Ship(3, memID);
+        MyShips[i]->set_x0(28 + (i - 1) * 100);
+        MyShips[i]->set_y0(196);
+        MyShips[i]->setPos(28 + (i - 1) * 100, 196);
+        scene->addItem(MyShips[i]);
+    }
+
+    //Отображаем двухпалубники
+    for(int i = 3; i < 6; i++)
+    {
+        MyShips[i] = new Ship(2, memID);
+        MyShips[i]->set_x0(28 + (i - 3) * 70);
+        MyShips[i]->set_y0(243);
+        MyShips[i]->setPos(28 + (i - 3) * 70, 243);
+        scene->addItem(MyShips[i]);
+    }
+
+    //Отображаем однопалубники
+    for(int i = 6; i < 10; i++)
+    {
+        MyShips[i] = new Ship(1, memID);
+        MyShips[i]->set_x0(28 + (i - 6) * 40);
+        MyShips[i]->set_y0(290);
+        MyShips[i]->setPos(28 + (i - 6) * 40, 290);
+        scene->addItem(MyShips[i]);
+    }
+
+    ui->BattleButton->show();
+
+    //Отображаем фрейм с подготовкой к битве.
+    ui->Frame->setScene(scene);
+    ui->Frame->show();
 }
 
-bool Ship::checkPlace(int* table, int i0, int j0)
+void MainWindow::Main_Menu_off()
 {
-    if(isHorisontal)
-    {
-        if(j0 - 1 < 0 && i0 - 1 < 0)    //Верхний левый угол
-        {
-            if(!aroundShip(table, i0, j0, i0 + 1, j0 + typeOfShip)) return false;
-        }
-        else if(j0 + typeOfShip >= 10 && i0 - 1 < 0)    //Верхний правый угол
-        {
-            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
-        }
-        else if(i0 - 1 < 0)    //Верх
-        {
-            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
-        }
-        else if(j0 - 1 < 0 && i0 + 1 >= 10) //Нижний левый угол
-        {
-            if(!aroundShip(table, i0 - 1, j0, i0, j0 + typeOfShip)) return false;
-        }
-        else if(j0 + typeOfShip >= 10 && i0 + 1 >= 10) //Нижний правый угол
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0, j0 + typeOfShip - 1)) return false;
-        }
-        else if(i0 + 1 >= 10) //Низ
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0, j0 + typeOfShip)) return false;
-        }
-        else if(j0 - 1 < 0)
-        {
-            if(!aroundShip(table, i0 - 1, j0, i0 + 1, j0 + typeOfShip)) return false;
-        }
-        else if(j0 + typeOfShip >= 10)
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 2, j0 + typeOfShip)) return false;
-        }
-        else
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
-        }
-    }
-    else
-    {
-        if(j0 - 1 < 0 && i0 - 1 < 0)    //Верхний левый угол
-        {
-            if(!aroundShip(table, i0, j0, i0 + typeOfShip, j0 + 1)) return false;
-        }
-        else if(j0 + 1 >= 10 && i0 - 1 < 0)    //Верхний правый угол
-        {
-            if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0)) return false;
-        }
-        else if(i0 - 1 < 0)    //Верх
-        {
-            qDebug() << "I'm here!\n";
-            if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
-        }
-        else if(j0 - 1 < 0 && i0 + typeOfShip >= 10) //Нижний левый угол
-        {
-            if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
-        }
-        else if(j0 + 1 >= 10 && i0 + typeOfShip >= 10) //Нижний правый угол
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
-        }
-        else if(i0 + typeOfShip >= 10) //Низ
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
-        }
-        else if(j0 - 1 < 0)
-        {
-            if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
-        }
-        else if(j0 + 1 >= 10)
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
-        }
-        else
-        {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
-        }
-    }
-
-    return true;
+    ui->BackgroundForMainMenu->hide();
+    ui->String_For_IPaddress->hide();
+    ui->Connection->hide();
+    ui->Name->hide();
 }
 
-bool Ship::onTable()
+void MainWindow::on_BattleButton_clicked()
 {
-    if(this->onPlace) return true;
-    else return false;
-}
 
-bool Ship::aroundShip(int* table, int i0, int j0, int k, int l)
-{   
-    for(int i = i0; i <= k; i++)
+    qDebug()<<"This is your Field:";
+    for(int i = 0; i < 10; i++)
     {
-        for(int j = j0; j <= l; j++)
+        QString s;
+        for(int j = 0; j < 10; j++)
         {
-            if(table[10 * i + j] != 0)
-                return false;
+            s+= QString::number(table[10 * i + j]) + " ";
         }
+        qDebug() << s;
     }
 
-    return true;
-}
-
-void Ship::clearFromShip()
-{
-    int* table = (int*)shmat(memId, 0, 0);
-
-    int i0 = (y - 86) / 30;
-    int j0 = (x - 250) / 31;
-
-    if(isHorisontal)
+    for(int i = 0; i < 10; i++)
     {
-        for(int j = j0; j < j0 + typeOfShip; j++)
+        if(!MyShips[i]->onTable())
         {
-            table[10 * i0 + j] = 0;
-        }
-    }
-    else
-    {
-        for(int i = i0; i < i0 + typeOfShip; i++)
-        {
-            table[10 * i + j0] = 0;
+            QMessageBox::information(this, "Ошибка", "Не все корабли расставлены на поле");
+            return;
         }
     }
 }
 
-void Ship::set_x0(int x)
-{
-    this->x0 = x;
-}
+/* //fork()
+ int ship_count = 5;
+ while(ship_count > 0)
+ {
 
-void Ship::set_y0(int y)
-{
-    this->y0 = y;
-}
+     //pасстановка корабля
+     --ship_count;
+ }
 
-int Ship::get_x()
-{
-    return x;
-}
+ Qtimer или поток
+ for(;;)
+ {
+     QPoint pos;
 
-int Ship::get_y()
-{
-    return y;
-}
+     if(QApplication::mouseButtons() == Qt::LeftButton)
+     {
+         pos = QWidget::mapFromGlobal(QCursor::pos());
+         qDebug() << pos.x() << pos.y();
+     }
+ }*/
