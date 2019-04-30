@@ -67,6 +67,8 @@ void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void Ship::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    setZValue(1);
+
     if(onPlace)
     {
         clearFromShip();
@@ -179,6 +181,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
+    setZValue(0);
     this->setCursor(QCursor(Qt::ArrowCursor));
     Q_UNUSED(event);
 }
@@ -192,7 +195,6 @@ void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
     if(isHorisontal)
     {
-
         setZValue(1);
         setRotation(90);
         isHorisontal = false;
@@ -254,23 +256,24 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         {
             if(!aroundShip(table, i0, j0, i0 + typeOfShip, j0 + 1)) return false;
         }
-        else if(j0 + typeOfShip >= 10 && i0 - 1 < 0)    //Верхний правый угол
+        else if(j0 + 1 >= 10 && i0 - 1 < 0)    //Верхний правый угол
         {
             if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0)) return false;
         }
         else if(i0 - 1 < 0)    //Верх
         {
+            qDebug() << "I'm here!\n";
             if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
         }
-        else if(j0 - 1 < 0 && i0 + 1 >= 10) //Нижний левый угол
+        else if(j0 - 1 < 0 && i0 + typeOfShip >= 10) //Нижний левый угол
         {
             if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
         }
-        else if(j0 + typeOfShip >= 10 && i0 + 1 >= 10) //Нижний правый угол
+        else if(j0 + 1 >= 10 && i0 + typeOfShip >= 10) //Нижний правый угол
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
         }
-        else if(i0 + 1 >= 10) //Низ
+        else if(i0 + typeOfShip >= 10) //Низ
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
         }
@@ -278,9 +281,9 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         {
             if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
         }
-        else if(j0 + typeOfShip >= 10)
+        else if(j0 + 1 >= 10)
         {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
         }
         else
         {
