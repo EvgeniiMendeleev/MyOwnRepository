@@ -155,18 +155,6 @@ void MainWindow::Main_Menu_off()
 
 void MainWindow::on_BattleButton_clicked()
 {
-
-    qDebug()<<"This is your Field:";
-    for(int i = 0; i < 10; i++)
-    {
-        QString s;
-        for(int j = 0; j < 10; j++)
-        {
-            s+= QString::number(table[10 * i + j]) + " ";
-        }
-        qDebug() << s;
-    }
-
     for(int i = 0; i < 10; i++)
     {
         if(!MyShips[i]->onTable())
@@ -175,25 +163,36 @@ void MainWindow::on_BattleButton_clicked()
             return;
         }
     }
+
+    send(ClientSocket, table, 100 * sizeof(int), MSG_NOSIGNAL);
+
+    shmctl(memID, IPC_RMID, 0);
+    ui->Frame->hide();
+    ui->BattleButton->hide();
+    delete scene;
+
+    BATTLE();
 }
 
-/* //fork()
- int ship_count = 5;
- while(ship_count > 0)
- {
+void MainWindow::BATTLE()
+{
+    scene = new QGraphicsScene;
 
-     //pасстановка корабля
-     --ship_count;
- }
+    frame.load(":/img/_Battlefield.png");
+    frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+    scene->addPixmap(frame);
 
- Qtimer или поток
- for(;;)
- {
-     QPoint pos;
+    QPixmap* ship = new QPixmap;
 
-     if(QApplication::mouseButtons() == Qt::LeftButton)
-     {
-         pos = QWidget::mapFromGlobal(QCursor::pos());
-         qDebug() << pos.x() << pos.y();
-     }
- }*/
+    ship->load(":/img/4ship.jpg");
+    QGraphicsPixmapItem* item = scene->addPixmap(*ship);
+    item->setPos(0, 0);
+
+    ui->Frame->setScene(scene);
+    ui->Frame->show();
+}
+
+void MainWindow::mousePressEvent(QGraphicsSceneMouseEvent* event)
+{
+    qDebug() << mapToScene(event->pos().x(), event->pos().y());
+}
