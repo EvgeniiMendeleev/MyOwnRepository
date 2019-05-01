@@ -3,9 +3,9 @@
 
 #include <QMainWindow>
 #include <QGraphicsView>
+#include <QGraphicsSceneMouseEvent>
+#include <QGraphicsPixmapItem>
 #include <QGraphicsItem>
-#include <QKeyEvent>
-#include <QEvent>
 #include <QPixmap>
 #include <QDebug>
 #include <QVector>
@@ -33,10 +33,12 @@ public:
     ~MainWindow();
      void Preparing_for_Battle(); //Функция для отображения фрейма с нераставленными кораблями и полем
      void Main_Menu_off();        //Функция для скрытия кадра главного меню
+     void Main_Menu_on();
+     void BATTLE();
+     void mousePressEvent(QGraphicsSceneMouseEvent* event);
 
 private slots:
     void on_Connection_clicked();                //Кнопка подключения в главном меню.
-
     void on_BattleButton_clicked();
 
 private:
