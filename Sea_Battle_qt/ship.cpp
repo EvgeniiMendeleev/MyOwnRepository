@@ -92,7 +92,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             int i = k;
             int j = m;
 
-            if(j + typeOfShip - 1 >= 10)
+            if((j + typeOfShip - 1 >= 10) || (i >= 10))
             {
                 this->setPos(x0, y0);
                 onPlace = false;
@@ -140,7 +140,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             int i = k;
             int j = m;
 
-            if(i + typeOfShip - 1 >= 10)
+            if((i + typeOfShip - 1 >= 10) || (j >= 10))
             {
                 this->setPos(x0, y0);
                 onPlace = false;
