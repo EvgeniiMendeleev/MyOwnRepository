@@ -20,8 +20,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Frame->hide();
     ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
     ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
-
     ui->BattleButton->hide();
+    //Main_Menu_off();
+    //BATTLE();
 }
 
 MainWindow::~MainWindow()
@@ -31,7 +32,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_Connection_clicked()
 {
-    QString IPaddress = ui->String_For_IPaddress->text();
+   QString IPaddress = ui->String_For_IPaddress->text();
 
     if(IPaddress == NULL)
     {
@@ -169,30 +170,64 @@ void MainWindow::on_BattleButton_clicked()
     shmctl(memID, IPC_RMID, 0);
     ui->Frame->hide();
     ui->BattleButton->hide();
-    delete scene;
+    
+    for(int i = 0; i < 10; i++)
+    {
+        MyShips[i]->hide();
+    }
 
     BATTLE();
 }
 
 void MainWindow::BATTLE()
 {
-    scene = new QGraphicsScene;
-
-    frame.load(":/img/_Battlefield.png");
+    frame.load(":/img/BATTLEFIELD.jpg");
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
-    QPixmap* ship = new QPixmap;
+    for(int i = 0; i < 10; i++)
+    {
+        QPixmap ship;
 
-    ship->load(":/img/4ship.jpg");
-    QGraphicsPixmapItem* item = scene->addPixmap(*ship);
-    item->setPos(0, 0);
+        if(i == 0)
+        {
+           ship.load(":/img/4ship.jpg");
+           ship = ship.scaled(98, 28);
+        }
+        else if((i >= 1) && (i <= 2))
+        {
+            ship.load(":/img/3ship.png");
+            ship = ship.scaled(75, 28);
+        }
+        else if(i >= 3 && i <= 5)
+        {
+            ship.load(":/img/2ship.png");
+            ship = ship.scaled(51, 28);
+        }
+        else if(i >= 6 && i <= 9)
+        {
+            ship.load(":/img/1ship.png");
+            ship = ship.scaled(24, 30);
+        }
+
+        QGraphicsPixmapItem* item = scene->addPixmap(ship);
+
+        if(MyShips[i]->Horisontal())
+        {
+            item->setPos(20 + 24 * MyShips[i]->get_x(), 104 + 23 * MyShips[i]->get_y());
+        }
+        else
+        {
+            item->setRotation(90);
+            item->setPos(20 + 24 * MyShips[i]->get_x() + 24, 104 + 23 * MyShips[i]->get_y());
+        }
+    }
+
+    for(int i = 0; i < 10; i++)
+    {
+        delete MyShips[i];
+    }
 
     ui->Frame->setScene(scene);
     ui->Frame->show();
-}
-
-void MainWindow::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
-    qDebug() << mapToScene(event->pos().x(), event->pos().y());
 }
