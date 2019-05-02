@@ -22,6 +22,7 @@ public:
     bool onTable();
     bool aroundShip(int* table, int i0, int j0, int k, int l);                 //Проверка на рядом стоящие корабли.
     void clearFromShip();
+    bool Horisontal();
 
     ~Ship();
 signals:
@@ -38,8 +39,8 @@ private:
     QPixmap TextureOfShip;              //Текстура корабля.
     int width;                          //Ширина текстуры корабля.
     int height = 42;                    //Высота текстуры корабля.
+    int x, y;                           //Координаты на сетке.
     int x0, y0;                         //Координаты появления корабля.
-    int x, y;                           //Координаты на сцене.
     bool isHorisontal = true;           //Переменная, отвечающая за состояние корабля в пространстве:
                                         //горизонтален он или вертикален.
     bool onPlace = false;               //Переменная, отвечающая за состояние на сетке: положен на игровую сетку или нет
