@@ -95,6 +95,8 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if((j + typeOfShip - 1 >= 10) || (i >= 10))
             {
                 this->setPos(x0, y0);
+                this->x = -1;
+                this->y = -1;
                 onPlace = false;
             }
             else
@@ -110,14 +112,16 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                         table[10 * i + l] = typeOfShip;
                     }
 
-                    this->x = this->pos().x();
-                    this->y = this->pos().y();
+                    this->x = j;//this->pos().x();
+                    this->y = i;//this->pos().y();
                     this->onPlace = true;
                 }
                 else
                 {
                     qDebug() << "Another ship is near!\n";
                     this->setPos(x0, y0);
+                    this->x = -1;
+                    this->y = -1;
                     onPlace = false;
                 }
             }
@@ -125,8 +129,8 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         else
         {
             this->setPos(x0, y0);
-            this->x = x0;
-            this->y = y0;
+            this->x = -1;
+            this->y = -1;
             this->onPlace = false;
         }
     }
@@ -143,6 +147,8 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if((i + typeOfShip - 1 >= 10) || (j >= 10))
             {
                 this->setPos(x0, y0);
+                this->x = -1;
+                this->y = -1;
                 onPlace = false;
             }
             else
@@ -158,15 +164,15 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                         table[10 * k + j] = typeOfShip;
                     }
 
-                    this->x = this->pos().x() - 31;
-                    this->y = this->pos().y();
+                    this->x = j; //this->pos().x() - 31;
+                    this->y = i; //this->pos().y();
                     this->onPlace = true;
                 }
                 else
                 {
                     this->setPos(this->x0, this->y0);
-                    this->x = x0;
-                    this->y = y0;
+                    this->x = -1;
+                    this->y = -1;
                     this->onPlace = false;
                     qDebug() << "Another ship is near!\n";
                 }
@@ -175,11 +181,16 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         else
         {
             this->setPos(this->x0, this->y0);
-            this->x = x0;
-            this->y = y0;
+            this->x = -1;
+            this->y = -1;
             this->onPlace = false;
         }
     }
+
+    qDebug() << "Type: " << typeOfShip;
+    qDebug() << "xSHIP = " << this->x;
+    qDebug() << "ySHIP = " << this->y;
+    qDebug() << "\n";
 
     setZValue(0);
     this->setCursor(QCursor(Qt::ArrowCursor));
@@ -243,7 +254,7 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         }
         else if(j0 + typeOfShip >= 10)
         {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 2, j0 + typeOfShip)) return false;
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
         }
         else
         {
@@ -262,7 +273,6 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         }
         else if(i0 - 1 < 0)    //Верх
         {
-            qDebug() << "I'm here!\n";
             if(!aroundShip(table, i0, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
         }
         else if(j0 - 1 < 0 && i0 + typeOfShip >= 10) //Нижний левый угол
@@ -318,8 +328,8 @@ void Ship::clearFromShip()
 {
     int* table = (int*)shmat(memId, 0, 0);
 
-    int i0 = (y - 86) / 30;
-    int j0 = (x - 250) / 31;
+    int i0 = y; //(y - 86) / 30;
+    int j0 = x; //(x - 250) / 31;
 
     if(isHorisontal)
     {
@@ -337,6 +347,11 @@ void Ship::clearFromShip()
     }
 }
 
+bool Ship::Horisontal()
+{
+    return this->isHorisontal;
+}
+
 void Ship::set_x0(int x)
 {
     this->x0 = x;
@@ -349,10 +364,10 @@ void Ship::set_y0(int y)
 
 int Ship::get_x()
 {
-    return x;
+    return this->x;
 }
 
 int Ship::get_y()
 {
-    return y;
+    return this->y;
 }
