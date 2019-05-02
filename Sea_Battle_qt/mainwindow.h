@@ -35,7 +35,6 @@ public:
      void Main_Menu_off();        //Функция для скрытия кадра главного меню
      void Main_Menu_on();
      void BATTLE();
-     void mousePressEvent(QGraphicsSceneMouseEvent* event);
 
 private slots:
     void on_Connection_clicked();                //Кнопка подключения в главном меню.
