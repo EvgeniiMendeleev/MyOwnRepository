@@ -7,14 +7,7 @@
 #include <pthread.h>
 #include <iostream>
 
-//enum states {WaitingOfTurn, Turn, WaitingOfPlayer, WaitingOfConnection};
-
-//-------Состояния-------
-#define WaitingOfConnection 3
-#define WaitingOfPlayer 2
-#define WaitingOfTurn 0
-#define Turn 1
-//----------------------
+enum states {WaitingOfTurn, Turn, WaitingOfReadyPlayer, Ready, WaitingOfConnection, PlacingShips, NotConnection};
 
 //--------Команды---------
 #define StopGame -1
@@ -22,14 +15,21 @@
 
 using namespace std;
 
-struct Position
+struct ResultOfShoot
 {
-	int i, j;  		//y и x - координаты выстрела.
-	bool isReady;		//Состояние клиента на момент боя.
+	int i, j;			//Координты отображения выстрела.
+	bool isBung			//Результат попадания.
 };
 
-int FieldOfFP[100];
-int FieldOfSP[100];
+struct RecvPackage
+{
+	int i, j;  			//Координаты выстрела.
+	states StateOfClient;		//Состояние клиента на момент боя.
+};
+
+int FieldOfSP[100], FieldOfFP[100];
+int FirstPlayer, SecondPlayer;
+states stateOfFirstPlayer, stateOfSecondPlayer;
 
 void showFieldFP()
 {
@@ -67,29 +67,55 @@ void showFieldSP()
 
 }
 
-void* DataFromFirstClient(void* FirstClient)
+void* DataFromFirstClient(void* NullData)
 {
-	int* firstPlayer = static_cast<int*>(FirstClient);
-	recv(*firstPlayer, &FieldOfFP, 100 * sizeof(int), MSG_NOSIGNAL);
-	
-	showFieldFP();
+	stateOfFirstPlayer = PlacingShips;
+	recv(FirstPlayer, &FieldOfFP, 100 * sizeof(int), MSG_NOSIGNAL);
+	stateOfFirstPlayer = Ready;
+
+	cout << "In First Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+
+	if(stateOfSecondPlayer == PlacingShips)
+	{
+		stateOfFirstPlayer = WaitingOfReadyPlayer;
+		send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+
+		while(stateOfSecondPlayer != Ready);
+	}
+
+	stateOfFirstPlayer = Turn;
+	send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
 
 	pthread_exit(0);
 }
 
-void* DataFromSecondClient(void* SecondClient)
+void* DataFromSecondClient(void* NullData)
 {
-	int* secondPlayer = static_cast<int*>(SecondClient);
-	recv(*secondPlayer, &FieldOfSP, 100 * sizeof(int), MSG_NOSIGNAL);
+	stateOfSecondPlayer = PlacingShips;
+	recv(SecondPlayer, &FieldOfSP, 100 * sizeof(int), MSG_NOSIGNAL);
+	stateOfSecondPlayer = Ready;
 	
-	showFieldSP();
+	cout << "In Second Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+
+	if(stateOfFirstPlayer == PlacingShips)
+	{
+		stateOfSecondPlayer = WaitingOfReadyPlayer;
+		send(SecondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
+
+		while(stateOfFirstPlayer != Ready);
+	}
+	
+	stateOfSecondPlayer = WaitingOfTurn;
+	send(SecondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
 
 	pthread_exit(0);
 }
 
 int main()
-{	
-	int_least8_t stateFirstPlayer, stateSecondPlayer;
+{
+	stateOfFirstPlayer = stateOfSecondPlayer = NotConnection;
+
+	cout << "Behind Threads 1: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	//---------------Создание слушающего сокета---------------------
 	int MasterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -106,13 +132,13 @@ int main()
 	
 	//----------------Соединение клиентов---------------------
 	
-	int FirstPlayer = accept(MasterSocket, 0, 0);
+	FirstPlayer = accept(MasterSocket, 0, 0);
 
 	if(FirstPlayer > 0)
 	{
 		printf("First player connected!\n");
-		//stateFirstPlayer = WaitingOfConnection;
-		//send(FirstPlayer, &stateFirstPlayer, sizeof(int_least8_t), MSG_NOSIGNAL);
+		stateOfFirstPlayer = WaitingOfConnection;
+		send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
 	}
 	else
 	{
@@ -120,14 +146,18 @@ int main()
 		return 0;
 	}
 
-	int SecondPlayer = accept(MasterSocket, 0, 0);
+	cout << "Behind Threads 2: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+
+	SecondPlayer = accept(MasterSocket, 0, 0);
 
 	if(SecondPlayer > 0)
 	{
 		printf("Second player connected!\n");
-		//int_least8_t state = WaitingOfPlayer;
-		//send(FirstPlayer, &state, sizeof(state), MSG_NOSIGNAL);
-		//send(SecondPlayer, &state, sizeof(state), MSG_NOSIGNAL);
+		
+		stateOfFirstPlayer = stateOfSecondPlayer = PlacingShips;
+		
+		send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+		send(SecondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
 	}
 	else
 	{
@@ -136,26 +166,38 @@ int main()
 	}
 	//------------------------------------------------------
 	
+	cout << "Behind Threads 3: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+
 	//-----------------Получение полей с кораблями-------------
-	void* First = &FirstPlayer;
-	void* Second = &SecondPlayer;
-
 	pthread_t FirstThread, SecondThread;
+	void* NullData = NULL;
 
-	pthread_create(&FirstThread, 0, DataFromFirstClient, First);
-	pthread_create(&SecondThread, 0, DataFromSecondClient, Second);
+	pthread_create(&FirstThread, 0, DataFromFirstClient, NullData);
+	pthread_create(&SecondThread, 0, DataFromSecondClient, NullData);
 
 	pthread_join(FirstThread, 0);
 	pthread_join(SecondThread, 0);
 	//--------------------------------------------------------
 
-	//---------------Процесс обмена данными-------------------
+	showFieldFP();
+	cout << endl;
+	showFieldSP();
 
+	cout << "After threads: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+
+	//---------------Процесс обмена данными-------------------
 	while(1)
 	{
+		struct RecvPackage InfoFromClient;
+		struct ResultOfShoot Result;
 
+		recv(FirstPlayer, &InfoFromClient, sizeof(RecvPackage), MSG_NOSIGNAL);
+
+		if(InfoFromClient.StateOfClient != stateOfFirstPlayer)
+		{
+			cout << "Error! States of player don't equale!\n";
+		}
 	}
-
 	//--------------------------------------------------------
 	return 0;
 }
