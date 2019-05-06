@@ -47,6 +47,8 @@ void MainWindow::on_Connection_clicked()
 
     ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
+    qDebug() << "Descriptor of player: " << ClientSocket << "\n";
+
     if(ClientSocket < 0)
     {
         qDebug() << "Error with socket()";
@@ -170,11 +172,6 @@ void MainWindow::on_BattleButton_clicked()
     shmctl(memID, IPC_RMID, 0);
     ui->Frame->hide();
     ui->BattleButton->hide();
-    
-    for(int i = 0; i < 10; i++)
-    {
-        MyShips[i]->hide();
-    }
 
     BATTLE();
 }
@@ -227,6 +224,10 @@ void MainWindow::BATTLE()
     {
         delete MyShips[i];
     }
+
+    Table = new BattleTable(ClientSocket, scene);
+    Table->setPos(322, 102);
+    scene->addItem(Table);
 
     ui->Frame->setScene(scene);
     ui->Frame->show();
