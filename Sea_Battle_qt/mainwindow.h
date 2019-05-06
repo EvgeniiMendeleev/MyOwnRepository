@@ -11,6 +11,7 @@
 #include <QVector>
 #include <QMessageBox>
 #include <sys/shm.h>
+#include <battletable.h>
 
 //--Библиотеки для работы с сокетами Беркли--
 #include <sys/socket.h>
@@ -18,11 +19,20 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 //-------------------------------------------
+
 #include <ship.h>
 
 namespace Ui {
 class MainWindow;
 }
+
+enum states {WaitingOfTurn,
+             Turn,
+             WaitingOfReadyPlayer,
+             Ready,
+             WaitingOfConnection,
+             PlacingShips,
+             NotConnection};
 
 class MainWindow : public QMainWindow
 {
@@ -49,7 +59,6 @@ private:
     QGraphicsScene* scene;
     //-----------------------------------------------------
 
-    QPoint PosMouse;        //Координаты мыши на экране.
     QVector<Ship*> MyShips; //Вектор всех кораблей (всего их 10)
     //i = 0 - четырёхпалубник
     //i = 1-2 - трёхпалубники
@@ -57,6 +66,8 @@ private:
     //i = 6-9 - однопалубники
     int memID;
     int* table;
+    BattleTable* Table;
+    states StateOfClient;
 };
 
 #endif // MAINWINDOW_H
