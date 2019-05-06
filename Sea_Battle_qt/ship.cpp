@@ -62,6 +62,7 @@ void Ship::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
 
 void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << this->pos();
     this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
 }
 
@@ -118,7 +119,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 }
                 else
                 {
-                    qDebug() << "Another ship is near!\n";
+                    //qDebug() << "Another ship is near!\n";
                     this->setPos(x0, y0);
                     this->x = -1;
                     this->y = -1;
@@ -165,7 +166,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                     }
 
                     this->x = j; //this->pos().x() - 31;
-                    this->y = i; //this->pos().y();
+                    this->y = i;
                     this->onPlace = true;
                 }
                 else
@@ -174,7 +175,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                     this->x = -1;
                     this->y = -1;
                     this->onPlace = false;
-                    qDebug() << "Another ship is near!\n";
+                    //qDebug() << "Another ship is near!\n";
                 }
             }
         }
@@ -187,10 +188,10 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
-    qDebug() << "Type: " << typeOfShip;
+   /* qDebug() << "Type: " << typeOfShip;
     qDebug() << "xSHIP = " << this->x;
     qDebug() << "ySHIP = " << this->y;
-    qDebug() << "\n";
+    qDebug() << "\n";*/
 
     setZValue(0);
     this->setCursor(QCursor(Qt::ArrowCursor));
@@ -230,7 +231,7 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         }
         else if(j0 + typeOfShip >= 10 && i0 - 1 < 0)    //Верхний правый угол
         {
-            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
+            if(!aroundShip(table, i0, j0 - 1, i0 + 1, j0 + typeOfShip - 1)) return false;
         }
         else if(i0 - 1 < 0)    //Верх
         {
@@ -248,15 +249,15 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0, j0 + typeOfShip)) return false;
         }
-        else if(j0 - 1 < 0)
+        else if(j0 - 1 < 0) //Сбоку слева
         {
             if(!aroundShip(table, i0 - 1, j0, i0 + 1, j0 + typeOfShip)) return false;
         }
-        else if(j0 + typeOfShip >= 10)
+        else if(j0 + typeOfShip >= 10) //Сбоку справа
         {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip - 1)) return false;
         }
-        else
+        else //Не по краям
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0 + 1, j0 + typeOfShip)) return false;
         }
@@ -285,17 +286,17 @@ bool Ship::checkPlace(int* table, int i0, int j0)
         }
         else if(i0 + typeOfShip >= 10) //Низ
         {
-            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
+            if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip - 1, j0 + 1)) return false;
         }
-        else if(j0 - 1 < 0)
+        else if(j0 - 1 < 0) //Сбоку слева
         {
             if(!aroundShip(table, i0 - 1, j0, i0 + typeOfShip, j0 + 1)) return false;
         }
-        else if(j0 + 1 >= 10)
+        else if(j0 + 1 >= 10) //Сбоку справа
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0)) return false;
         }
-        else
+        else //Не по краям
         {
             if(!aroundShip(table, i0 - 1, j0 - 1, i0 + typeOfShip, j0 + 1)) return false;
         }
