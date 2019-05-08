@@ -62,7 +62,7 @@ void Ship::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
 
 void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    qDebug() << this->pos();
+    //qDebug() << this->pos();
     this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
 }
 
