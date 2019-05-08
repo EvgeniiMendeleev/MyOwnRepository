@@ -7,19 +7,27 @@
 #include <pthread.h>
 #include <iostream>
 
-enum states {WaitingOfTurn, Turn, WaitingOfReadyPlayer, Ready, WaitingOfConnection, PlacingShips, NotConnection};
-
-//--------Команды---------
-#define StopGame -1
-//-----------------------
-
 using namespace std;
 
-struct RecvPackage
+enum states {WaitingOfReadyPlayer, Ready, WaitingOfConnection, PlacingShips, NotConnection, WaitingOfTurn, Turn};
+enum Msg_type {result_of_shot, enemy_shot, error};
+enum ResultOfShot {not_hit, hit, kill};
+
+struct Shot
 {
-	int i, j;  			//Координаты выстрела.
+	unsigned short  PosX;
+	unsigned short  PosY;
 };
 
+struct Message
+{
+	Msg_type type;
+	unsigned short PosX;
+	unsigned short PosY;
+	ResultOfShot Result;
+};
+
+int FirstPlayer, SecondPlayer;
 int FieldOfSP[100], FieldOfFP[100];
 states stateOfFirstPlayer, stateOfSecondPlayer;
 
@@ -59,12 +67,10 @@ void showFieldSP()
 
 }
 
-void* DataFromFirstClient(void* FirstClient)
+void* DataFromFirstClient(void* NullData)
 {
-	int* firstPlayer = static_cast<int*>(FirstClient);
-
 	stateOfFirstPlayer = PlacingShips;
-	recv(*firstPlayer, &FieldOfFP, 100 * sizeof(int), MSG_NOSIGNAL);
+	recv(FirstPlayer, &FieldOfFP, 100 * sizeof(int), MSG_NOSIGNAL);
 	stateOfFirstPlayer = Ready;
 
 	cout << "In First Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
@@ -73,7 +79,6 @@ void* DataFromFirstClient(void* FirstClient)
 	{
 		stateOfFirstPlayer = WaitingOfReadyPlayer;
 		//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
-
 		while(stateOfSecondPlayer != Ready);
 	}
 
@@ -88,65 +93,63 @@ void* DataFromFirstClient(void* FirstClient)
         int TwoShip[2] = {3, 0};
         int ThreeShip[2] = {2, 0};
         int FourShip[2] = {1, 0};
-	int* isBung;			//Результат выстрела
 
 	while(OneShip || TwoShip[0] || ThreeShip[0] || FourShip[0])
 	{
-		struct RecvPackage* InfoFromFP = new RecvPackage;
+		Shot* InfoFromClient = new Shot;
 
-		recv(*firstPlayer, InfoFromFP, sizeof(RecvPackage), MSG_NOSIGNAL);
-
-		cout << "Yabadabaduuuuuuuuu!\n";
+		recv(FirstPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL);
 
 		if(stateOfFirstPlayer != Turn)
 		{
-			isBung = new int(-1);
-			cout << "FirstPlayer, nizya. Sidi i jdi!\n";
-			cout << "isBungFP = " << *isBung << endl;
-			send(*firstPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
+			cout << "FirstPlayer, nizya! Sidi i jdi!" << endl;
 		}
 		else
 		{
-			cout << "First player are shooting in: " << InfoFromFP->i << " " << InfoFromFP->j << "\n";
-			
-			if(FieldOfSP[10 * InfoFromFP->i + InfoFromFP->j] != -1)
+			if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1)
 			{
-				if(FieldOfSP[10 * InfoFromFP->i + InfoFromFP->j] != 0)
+                                Message MsgForSP;
+                                Message MsgForFP;
+
+                                MsgForFP.type = result_of_shot;
+                                MsgForSP.type = enemy_shot;
+
+                                MsgForSP.PosY = MsgForFP.PosY = InfoFromClient->PosY;
+                                MsgForSP.PosX = MsgForFP.PosX = InfoFromClient->PosX;
+
+
+				if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
 				{
-					cout << "First player bang in " << FieldOfSP[10 * InfoFromFP->i + InfoFromFP->j] << "\n";
-					isBung = new int(1);
+					cout << "First player bung in  " << FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
+					MsgForSP.Result = hit;
+					MsgForFP.Result = hit;
 				}
 				else
 				{
-					isBung = new int (0);
-					cout << "Not bang!\n";
+					cout << "First Player not bung!\n";
+					MsgForSP.Result = not_hit;
+					MsgForFP.Result = not_hit;
 					stateOfFirstPlayer = WaitingOfTurn;
 					stateOfSecondPlayer = Turn;
 				}
-				
-				send(*firstPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
-			}
-			else
-			{
-				isBung = new int(-1);
-				send(*firstPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
+
+				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
+				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
 			}
 		}
-		
-		delete isBung;
-		delete InfoFromFP;
+
+		delete InfoFromClient;
 	}
 
 	pthread_exit(0);
 }
 
-void* DataFromSecondClient(void* SecondClient)
+void* DataFromSecondClient(void* NullData)
 {
-	int* secondPlayer = static_cast<int*>(SecondClient);
 	stateOfSecondPlayer = PlacingShips;
-	recv(*secondPlayer, &FieldOfSP, 100 * sizeof(int), MSG_NOSIGNAL);
+	recv(SecondPlayer, &FieldOfSP, 100 * sizeof(int), MSG_NOSIGNAL);
 	stateOfSecondPlayer = Ready;
-	
+
 	cout << "In Second Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	if(stateOfFirstPlayer == PlacingShips)
@@ -167,51 +170,35 @@ void* DataFromSecondClient(void* SecondClient)
 	int TwoShip[2] = {3, 0};
 	int ThreeShip[2] = {2, 0};
 	int FourShip[2] = {1, 0};
-	int* isBung;			//Результат выстрела.
 
 	while(OneShip || TwoShip[0] || ThreeShip[0] || FourShip[0])
 	{
-		struct RecvPackage* InfoFromSP = new RecvPackage;
+		Shot* InfoFromClient = new Shot;
 
-		recv(*secondPlayer, InfoFromSP, sizeof(RecvPackage), MSG_NOSIGNAL);
+		recv(SecondPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL);
 
 		if(stateOfSecondPlayer != Turn)
 		{
-			isBung = new int(-1);
-			cout << "SecondPlayer, nizya. Sidi i jdi!\n";
-			cout << "isBungSP = " << (*isBung) << endl;
-			send(*secondPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
+			cout << "SecondPlayer, nizya! Sidi i jdi!" << endl;
 		}
 		else
 		{
-			cout << "Second player are shooting in: " << InfoFromSP->i << " " << InfoFromSP->j << "\n";
-			
-			if(FieldOfFP[10 * InfoFromSP->i + InfoFromSP->j] != -1)
+			if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1)
 			{
-				if(FieldOfFP[10 * InfoFromSP->i + InfoFromSP->j] != 0)
-                        	{
-                        	        cout << "Second player bang in " << FieldOfFP[10 * InfoFromSP->i + InfoFromSP->j] << "\n";
-					isBung = new int(1);
+				if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
+				{
+					cout << "Second player bung in " << FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
 				}
-                        	else
-                        	{
-                                	cout << "Second player Not bang!\n";
-                        		isBung = new int(0);
-					stateOfFirstPlayer = Turn;
+				else
+				{
+					cout << "Second player not bung!\n";
 					stateOfSecondPlayer = WaitingOfTurn;
+					stateOfFirstPlayer = Turn;
 				}
-				
-				send(*secondPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
-			}
-			else
-			{
-				isBung = new int(-1);
-				send(*secondPlayer, isBung, sizeof(int), MSG_NOSIGNAL);
 			}
 		}
-		
-		delete isBung;
-		delete InfoFromSP;
+
+		delete InfoFromClient;
 	}
 
 	pthread_exit(0);
@@ -238,7 +225,7 @@ int main()
 	
 	//----------------Соединение клиентов---------------------
 	
-	int FirstPlayer = accept(MasterSocket, 0, 0);
+	FirstPlayer = accept(MasterSocket, 0, 0);
 
 	if(FirstPlayer > 0)
 	{
@@ -254,7 +241,7 @@ int main()
 
 	cout << "Behind Threads 2: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
-	int SecondPlayer = accept(MasterSocket, 0, 0);
+	SecondPlayer = accept(MasterSocket, 0, 0);
 
 	if(SecondPlayer > 0)
 	{
@@ -275,10 +262,12 @@ int main()
 	cout << "Behind Threads 3: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	//----------------------Процесс игры----------------------
+	void* Null = NULL;
+	
 	pthread_t FirstThread, SecondThread;
 
-	pthread_create(&FirstThread, 0, DataFromFirstClient, &FirstPlayer);
-	pthread_create(&SecondThread, 0, DataFromSecondClient, &SecondPlayer);
+	pthread_create(&FirstThread, 0, DataFromFirstClient, Null);
+	pthread_create(&SecondThread, 0, DataFromSecondClient, Null);
 
 	pthread_join(FirstThread, 0);
 	pthread_join(SecondThread, 0);
