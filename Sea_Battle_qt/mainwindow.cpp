@@ -21,8 +21,15 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
     ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
     ui->BattleButton->hide();
-    //Main_Menu_off();
-    //BATTLE();
+
+    BUNG.load(":/img/красный-крестик.png");
+    BUNG = BUNG.scaled(24, 24);
+
+    NotBUNG.load(":/img/BlackDot.png");
+    NotBUNG = NotBUNG.scaled(24, 24);
+
+    MyTimer = new QTimer;
+    MyTimer->setInterval(50);
 }
 
 MainWindow::~MainWindow()
@@ -43,11 +50,7 @@ void MainWindow::on_Connection_clicked()
     QByteArray tmp = IPaddress.toLatin1();
     const char* IP = tmp.data();
 
-    qDebug() << IP;
-
     ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-    qDebug() << "Descriptor of player: " << ClientSocket << "\n";
 
     if(ClientSocket < 0)
     {
@@ -168,7 +171,6 @@ void MainWindow::on_BattleButton_clicked()
     }
 
     send(ClientSocket, table, 100 * sizeof(int), MSG_NOSIGNAL);
-
     shmctl(memID, IPC_RMID, 0);
     ui->Frame->hide();
     ui->BattleButton->hide();
@@ -225,10 +227,63 @@ void MainWindow::BATTLE()
         delete MyShips[i];
     }
 
-    Table = new BattleTable(ClientSocket, scene);
+    Table = new BattleTable();
     Table->setPos(322, 102);
+    connect(Table, &BattleTable::fire, this, &MainWindow::SendFire);
     scene->addItem(Table);
 
     ui->Frame->setScene(scene);
     ui->Frame->show();
+
+    connect(MyTimer, &QTimer::timeout, this, &MainWindow::ReadFromServer);
+    fcntl(ClientSocket, F_SETFL, O_NONBLOCK);
+    MyTimer->start();
+}
+
+void MainWindow::SendFire(unsigned short x, unsigned short y)
+{
+    Shot* InfoForServer = new Shot;
+    InfoForServer->PosX = x;
+    InfoForServer->PosY = y;
+
+    send(ClientSocket, InfoForServer, sizeof(InfoForServer), MSG_NOSIGNAL);
+
+    delete InfoForServer;
+}
+
+void MainWindow::ReadFromServer()
+{
+    Message* MsgFromServer = new Message;
+
+    if(recv(ClientSocket, MsgFromServer, sizeof(Message), MSG_NOSIGNAL) > 0)
+    {
+        qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
+        qDebug() << "MsgFromServer->PosX = " << MsgFromServer->PosX;
+        qDebug() << "MsgFromServer->PosY = " << MsgFromServer->PosY;
+        qDebug() << "MsgFromServer->type = " << MsgFromServer->type;
+        if(MsgFromServer->type == result_of_shot)
+        {
+            if(MsgFromServer->Result == hit)
+            {
+                qDebug() << "I'm hit ship!\n";
+            }
+            else if(MsgFromServer->Result == not_hit)
+            {
+                qDebug() << "I'm not hit!\n";
+            }
+        }
+        else if(MsgFromServer->type == enemy_shot)
+        {
+            if(MsgFromServer->Result == hit)
+            {
+                qDebug() << "Enemy hit me!\n";
+            }
+            else if(MsgFromServer->Result == not_hit)
+            {
+                qDebug() << "Enemy not hit me! Yessss!\n";
+            }
+        }
+    }
+
+    delete MsgFromServer;
 }
