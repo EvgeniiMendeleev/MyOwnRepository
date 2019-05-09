@@ -184,6 +184,8 @@ void MainWindow::BATTLE()
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
+    ShipOnTheTable.resize(10);
+    
     for(int i = 0; i < 10; i++)
     {
         QPixmap ship;
@@ -213,12 +215,12 @@ void MainWindow::BATTLE()
 
         if(MyShips[i]->Horisontal())
         {
-            item->setPos(20 + 24 * MyShips[i]->get_x(), 104 + 23 * MyShips[i]->get_y());
+            item->setPos(20 + 24 * MyShips[i]->get_x(), 103 + 23 * MyShips[i]->get_y());
         }
         else
         {
             item->setRotation(90);
-            item->setPos(20 + 24 * MyShips[i]->get_x() + 24, 104 + 23 * MyShips[i]->get_y());
+            item->setPos(23 + 24 * MyShips[i]->get_x() + 26, 103 + 23 * MyShips[i]->get_y());
         }
     }
 
@@ -257,30 +259,45 @@ void MainWindow::ReadFromServer()
 
     if(recv(ClientSocket, MsgFromServer, sizeof(Message), MSG_NOSIGNAL) > 0)
     {
-        qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
+        /*qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
         qDebug() << "MsgFromServer->PosX = " << MsgFromServer->PosX;
         qDebug() << "MsgFromServer->PosY = " << MsgFromServer->PosY;
-        qDebug() << "MsgFromServer->type = " << MsgFromServer->type;
+        qDebug() << "MsgFromServer->type = " << MsgFromServer->type;*/
+
         if(MsgFromServer->type == result_of_shot)
         {
             if(MsgFromServer->Result == hit)
             {
-                qDebug() << "I'm hit ship!\n";
+                QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
+                item->setPos(322 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
             else if(MsgFromServer->Result == not_hit)
             {
-                qDebug() << "I'm not hit!\n";
+                QGraphicsPixmapItem* item= scene->addPixmap(NotBUNG);
+                item->setPos(322 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
+            }
+            else if(MsgFromServer->Result == kill)
+            {
+                QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
+                item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
         }
         else if(MsgFromServer->type == enemy_shot)
         {
             if(MsgFromServer->Result == hit)
             {
-                qDebug() << "Enemy hit me!\n";
+                QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
+                item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
             else if(MsgFromServer->Result == not_hit)
             {
-                qDebug() << "Enemy not hit me! Yessss!\n";
+                QGraphicsPixmapItem* item= scene->addPixmap(NotBUNG);
+                item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
+            }
+            else if(MsgFromServer->Result == kill)
+            {
+                QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
+                item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
         }
     }
