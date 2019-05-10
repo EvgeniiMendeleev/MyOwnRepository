@@ -3,6 +3,9 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
+#include <stdint.h>
+
+using namespace std;
 
 class BattleTable : public QObject, public QGraphicsItem
 {
@@ -16,7 +19,7 @@ private:
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget);
 
 signals:
-    void fire(unsigned short x, unsigned short y);
+    void fire(int16_t x, int16_t y);
 
 public slots:
 
