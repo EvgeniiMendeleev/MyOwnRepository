@@ -26,6 +26,8 @@
 
 #include <ship.h>
 
+using namespace std;
+
 namespace Ui {
 class MainWindow;
 }
@@ -40,20 +42,20 @@ enum Msg_type {result_of_shot,
 
 enum states {WaitingOfReadyPlayer,
              WaitingOfConnection,
-             PlacingShips};
+             PlacingShips, Win, Lose};
 
 struct Shot
 {
-    unsigned short PosX;
-    unsigned short PosY;
+    int16_t PosX;
+    int16_t PosY;
 };
 
 struct Message
 {
-    Msg_type type;
-    unsigned short PosX;
-    unsigned short PosY;
-    ResultOfShot Result;
+    int16_t type;
+    int16_t PosX;
+    int16_t PosY;
+    int16_t Result;
 };
 
 class MainWindow : public QMainWindow
@@ -69,16 +71,16 @@ public:
      void BATTLE();               //Функция для отображения кадра с битвой.
 
 private slots:
-    void on_Connection_clicked();                              //Кнопка подключения в главном меню.
-    void on_BattleButton_clicked();                            //Кнопка готовности на этапе расстановки кораблей.
-    void SendFire(unsigned short x, unsigned short y);         //Отправка координат серверу.
-    void ReadFromServer();                                     //Чтение данных с сервера.
+    void on_Connection_clicked();                //Кнопка подключения в главном меню.
+    void on_BattleButton_clicked();              //Кнопка готовности на этапе расстановки кораблей.
+    void SendFire(int16_t x, int16_t y);         //Отправка координат серверу.
+    void ReadFromServer();                       //Чтение данных с сервера.
 
 private:
     Ui::MainWindow *ui;     //Главное меню.
     int ClientSocket;       //Сокет клиента, с помощью которого будет общение с сервером.
 
-    QTimer* MyTimer;        //Таймер, по истечению которого будут читаться данные с сокета.
+    QTimer* MyTimer;        //Таймер, по истечению которого будут читаться данные с сокета во время боя.
 
     //---Переменные для отображения какого - либо фрейма---
     QPixmap frame;
@@ -98,11 +100,11 @@ private:
 
     //----Переменные для работы с таблицей кораблей----
     int memID;
-    int* table;
+    int16_t* table;
     //-------------------------------------------------
 
-    BattleTable* Table;            //Поле, на котором вычисляются координаты выстрела для противника
-    states StateOfClient;           //Состояние клиента.
+    BattleTable* Table;        //Поле, на котором вычисляются координаты выстрела для противника
+    states StateOfClient;      //Состояние клиента.
 };
 
 #endif // MAINWINDOW_H
