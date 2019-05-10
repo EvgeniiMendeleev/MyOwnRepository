@@ -102,7 +102,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             }
             else
             {
-                int* table = (int*)shmat(memId, 0, 0);
+                int16_t* table = (int16_t*)shmat(memId, 0, 0);
 
                 if(checkPlace(table, i, j))
                 {
@@ -154,7 +154,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             }
             else
             {
-                int* table = (int*)shmat(memId, 0, 0);
+                int16_t* table = (int16_t*)shmat(memId, 0, 0);
 
                 if(checkPlace(table, i, j))
                 {
@@ -221,7 +221,7 @@ void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
     Q_UNUSED(event);
 }
 
-bool Ship::checkPlace(int* table, int i0, int j0)
+bool Ship::checkPlace(int16_t* table, int i0, int j0)
 {
     if(isHorisontal)
     {
@@ -311,7 +311,7 @@ bool Ship::onTable()
     else return false;
 }
 
-bool Ship::aroundShip(int* table, int i0, int j0, int k, int l)
+bool Ship::aroundShip(int16_t* table, int i0, int j0, int k, int l)
 {   
     for(int i = i0; i <= k; i++)
     {
@@ -327,7 +327,7 @@ bool Ship::aroundShip(int* table, int i0, int j0, int k, int l)
 
 void Ship::clearFromShip()
 {
-    int* table = (int*)shmat(memId, 0, 0);
+    int16_t* table = (int16_t*)shmat(memId, 0, 0);
 
     int i0 = y; //(y - 86) / 30;
     int j0 = x; //(x - 250) / 31;
