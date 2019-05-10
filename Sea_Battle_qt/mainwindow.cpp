@@ -86,14 +86,14 @@ void MainWindow::Preparing_for_Battle()
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
-    memID = shmget(IPC_PRIVATE, 100 * sizeof(int), 0600|IPC_CREAT|IPC_EXCL);
+    memID = shmget(IPC_PRIVATE, 100 * sizeof(int16_t), 0600|IPC_CREAT|IPC_EXCL);
 
     if(memID < 0)
     {
         qDebug() << "Error with shmget()";
     }
 
-    table = (int*)shmat(memID, 0, 0);
+    table = (int16_t*)shmat(memID, 0, 0);
 
     for(int i = 0; i < 100; i++)
     {
@@ -170,7 +170,7 @@ void MainWindow::on_BattleButton_clicked()
         }
     }
 
-    send(ClientSocket, table, 100 * sizeof(int), MSG_NOSIGNAL);
+    send(ClientSocket, table, 100 * sizeof(int16_t), MSG_NOSIGNAL);
     shmctl(memID, IPC_RMID, 0);
     ui->Frame->hide();
     ui->BattleButton->hide();
@@ -184,8 +184,6 @@ void MainWindow::BATTLE()
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
 
-    ShipOnTheTable.resize(10);
-    
     for(int i = 0; i < 10; i++)
     {
         QPixmap ship;
@@ -242,7 +240,7 @@ void MainWindow::BATTLE()
     MyTimer->start();
 }
 
-void MainWindow::SendFire(unsigned short x, unsigned short y)
+void MainWindow::SendFire(int16_t x, int16_t y)
 {
     Shot* InfoForServer = new Shot;
     InfoForServer->PosX = x;
@@ -259,42 +257,47 @@ void MainWindow::ReadFromServer()
 
     if(recv(ClientSocket, MsgFromServer, sizeof(Message), MSG_NOSIGNAL) > 0)
     {
-        /*qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
+        Msg_type type = static_cast<Msg_type>(MsgFromServer->type);
+        ResultOfShot Result = static_cast<ResultOfShot>(MsgFromServer->Result);
+
+        /*
+        qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
         qDebug() << "MsgFromServer->PosX = " << MsgFromServer->PosX;
         qDebug() << "MsgFromServer->PosY = " << MsgFromServer->PosY;
-        qDebug() << "MsgFromServer->type = " << MsgFromServer->type;*/
-
-        if(MsgFromServer->type == result_of_shot)
+        qDebug() << "MsgFromServer->type = " << MsgFromServer->type;
+        */
+        
+        if(type == result_of_shot)
         {
-            if(MsgFromServer->Result == hit)
+            if(Result == hit)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
                 item->setPos(322 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
-            else if(MsgFromServer->Result == not_hit)
+            else if(Result == not_hit)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(NotBUNG);
                 item->setPos(322 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
-            else if(MsgFromServer->Result == kill)
+            else if(Result == kill)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
-                item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
+                item->setPos(322 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
         }
-        else if(MsgFromServer->type == enemy_shot)
+        else if(type == enemy_shot)
         {
-            if(MsgFromServer->Result == hit)
+            if(Result == hit)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
                 item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
-            else if(MsgFromServer->Result == not_hit)
+            else if(Result == not_hit)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(NotBUNG);
                 item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
             }
-            else if(MsgFromServer->Result == kill)
+            else if(Result == kill)
             {
                 QGraphicsPixmapItem* item= scene->addPixmap(BUNG);
                 item->setPos(20 + 24 * MsgFromServer->PosX, 102 + 24 * MsgFromServer->PosY);
