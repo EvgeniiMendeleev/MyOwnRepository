@@ -9,33 +9,61 @@
 
 using namespace std;
 
-enum states {WaitingOfReadyPlayer, WaitingOfConnection, PlacingShips, NotConnection, Ready, WaitingOfTurn, Turn, Win, Lose};
+enum states {WaitingOfReadyPlayer, WaitingOfConnection, PlacingShips, Win, Lose, NotConnection, Ready, WaitingOfTurn, Turn};
 enum Msg_type {result_of_shot, enemy_shot, error};
 enum ResultOfShot {not_hit, hit, kill};
 
 struct Shot
 {
-	unsigned short  PosX;
-	unsigned short  PosY;
+	int16_t PosX;
+	int16_t PosY;
 };
 
 struct Message
 {
-	Msg_type type;
-	unsigned short PosX;
-	unsigned short PosY;
-	ResultOfShot Result;
+	int16_t type;
+	int16_t PosX;
+	int16_t PosY;
+	int16_t Result;
 };
 
 int FirstPlayer, SecondPlayer;
-int FieldOfSP[100], FieldOfFP[100];
+int16_t FieldOfSP[100], FieldOfFP[100];
 states stateOfFirstPlayer, stateOfSecondPlayer;
+
+void showFP()
+{
+	for(int i = 0; i < 10; i++)
+	{
+		for(int j = 0; j < 10; j++)
+		{
+			cout << FieldOfFP[10 * i + j] << " ";
+		}
+
+		cout << endl;
+	}
+}
+
+void showSP()
+{
+	for(int i = 0; i < 10; i++)
+	{
+		for(int j = 0; j < 10; j++)
+		{
+			cout << FieldOfSP[10 * i + j] << " ";
+		}
+
+		cout << endl;
+	}
+}
 
 void* DataFromFirstClient(void* NullData)
 {
 	stateOfFirstPlayer = PlacingShips;
-	recv(FirstPlayer, &FieldOfFP, 100 * sizeof(int), MSG_NOSIGNAL);
+	recv(FirstPlayer, &FieldOfFP, 100 * sizeof(int16_t), MSG_NOSIGNAL);
 	stateOfFirstPlayer = Ready;
+
+	showFP();
 
 	cout << "In First Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
@@ -75,11 +103,11 @@ void* DataFromFirstClient(void* NullData)
                                 Message MsgForSP;
                                 Message MsgForFP;
 
-                                MsgForFP.type = result_of_shot;
+                                MsgForFP.type = static_cast<int16_t>(result_of_shot);
 				MsgForFP.PosX = InfoFromClient->PosX;
 				MsgForFP.PosY = InfoFromClient->PosY;
 
-                                MsgForSP.type = enemy_shot;
+                                MsgForSP.type = static_cast<int16_t>(enemy_shot);
                                 MsgForSP.PosX = InfoFromClient->PosX;
                                 MsgForSP.PosY = InfoFromClient->PosY;
 
@@ -87,12 +115,14 @@ void* DataFromFirstClient(void* NullData)
 				if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
 				{
 					cout << "First player bung in  " << FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
-					int typeOfShip = FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
+					int16_t typeOfShip = FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
 
 					if(typeOfShip == 1)
 					{
 						--OneShip;
 						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						MsgForFP.Result = static_cast<int16_t>(hit);
+						MsgForSP.Result = static_cast<int16_t>(hit);
 					}
 					else if(typeOfShip == 2)
 					{
@@ -106,8 +136,8 @@ void* DataFromFirstClient(void* NullData)
 						}
 						else
 						{
-							MsgForSP.Result = hit;
-							MsgForFP.Result = hit;
+							MsgForSP.Result = static_cast<int16_t>(hit);
+							MsgForFP.Result = static_cast<int16_t>(hit);
 						}
 					}
 					else if(typeOfShip == 3)
@@ -122,8 +152,8 @@ void* DataFromFirstClient(void* NullData)
 						}
 						else
 						{
-							MsgForSP.Result = hit;
-							MsgForFP.Result = hit;
+							MsgForSP.Result = static_cast<int16_t>(hit);
+							MsgForFP.Result = static_cast<int16_t>(hit);
 						}
 					}
 					else if(typeOfShip == 4)
@@ -138,16 +168,20 @@ void* DataFromFirstClient(void* NullData)
 						}
 						else
 						{
-							MsgForSP.Result = hit;
-							MsgForFP.Result = hit;
+							MsgForSP.Result = static_cast<int16_t>(hit);
+							MsgForFP.Result = static_cast<int16_t>(hit);
 						}
 					}
 				}
 				else
 				{
-					MsgForSP.Result = not_hit;
-					MsgForFP.Result = not_hit;
+					FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+
+					MsgForSP.Result = static_cast<int16_t>(not_hit);
+					MsgForFP.Result = static_cast<int16_t>(not_hit);
+					
 					cout << "First Player not bung!\n";
+					
 					stateOfFirstPlayer = WaitingOfTurn;
 					stateOfSecondPlayer = Turn;
 				}
@@ -155,10 +189,13 @@ void* DataFromFirstClient(void* NullData)
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
 
-				cout << "FOne: " << OneShip << ", Palub: " << OneShip << endl;;
+				/*cout << "FOne: " << OneShip << ", Palub: " << OneShip << endl;;
                                 cout << "FTwo: " << TwoShip[0] << ", Palub: " << TwoShip[1] << endl;
                                 cout << "FThree: " << ThreeShip[0] << ", Palub: " << ThreeShip[1] << endl;
-                                cout << "FFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;
+                                cout << "FFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;*/
+
+				showSP();
+
 				cout << endl;
 				cout << endl;
 			}
@@ -178,8 +215,10 @@ void* DataFromFirstClient(void* NullData)
 void* DataFromSecondClient(void* NullData)
 {
 	stateOfSecondPlayer = PlacingShips;
-	recv(SecondPlayer, &FieldOfSP, 100 * sizeof(int), MSG_NOSIGNAL);
+	recv(SecondPlayer, &FieldOfSP, 100 * sizeof(int16_t), MSG_NOSIGNAL);
 	stateOfSecondPlayer = Ready;
+
+	showSP();
 
 	cout << "In Second Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
@@ -219,22 +258,26 @@ void* DataFromSecondClient(void* NullData)
 				Message MsgForFP;
 				Message MsgForSP;
 
-				MsgForFP.type = enemy_shot;
+				MsgForFP.type = static_cast<int16_t>(enemy_shot);
 				MsgForFP.PosX = InfoFromClient->PosX;
 				MsgForFP.PosY = InfoFromClient->PosY;
 
-				MsgForSP.type = result_of_shot;
+				MsgForSP.type = static_cast<int16_t>(result_of_shot);
 				MsgForSP.PosX = InfoFromClient->PosX;
 				MsgForSP.PosY = InfoFromClient->PosY;
 
 				if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
 				{
 					cout << "Second player bung in " << FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
-					int typeOfShip = FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
+					int16_t typeOfShip = FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
 
 					if(typeOfShip == 1)
 					{
 						--OneShip;
+						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+
+						MsgForFP.Result = static_cast<int16_t>(hit);
+						MsgForSP.Result = static_cast<int16_t>(hit);
 					}
 					else if(typeOfShip == 2)
 					{
@@ -248,8 +291,8 @@ void* DataFromSecondClient(void* NullData)
 						}
 						else
 						{
-							MsgForFP.Result = hit;
-							MsgForSP.Result = hit;
+							MsgForFP.Result = static_cast<int16_t>(hit);
+							MsgForSP.Result = static_cast<int16_t>(hit);
 						}
 					}
 					else if(typeOfShip == 3)
@@ -264,8 +307,8 @@ void* DataFromSecondClient(void* NullData)
 						}
 						else
 						{
-							MsgForFP.Result = hit;
-							MsgForSP.Result = hit;
+							MsgForFP.Result = static_cast<int16_t>(hit);
+							MsgForSP.Result = static_cast<int16_t>(hit);
 						}
 					}
 					else if(typeOfShip == 4)
@@ -280,15 +323,17 @@ void* DataFromSecondClient(void* NullData)
 						}
 						else
 						{
-							MsgForFP.Result = hit;
-							MsgForSP.Result = hit;
+							MsgForFP.Result = static_cast<int16_t>(hit);
+							MsgForSP.Result = static_cast<int16_t>(hit);
 						}
 					}
 				}
 				else
 				{
-					MsgForSP.Result = not_hit;
-					MsgForFP.Result = not_hit;
+					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+
+					MsgForSP.Result = static_cast<int16_t>(not_hit);
+					MsgForFP.Result = static_cast<int16_t>(not_hit);
 
 					cout << "Second player not bung!\n";
 					
@@ -298,10 +343,13 @@ void* DataFromSecondClient(void* NullData)
 
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
-				cout << "SOne: " << OneShip << ", Palub: " << OneShip << endl;
+				/*cout << "SOne: " << OneShip << ", Palub: " << OneShip << endl;
 				cout << "STwo: " << TwoShip[0] << ", Palub: " << TwoShip[1] << endl;
 				cout << "SThree: " << ThreeShip[0] << ", Palub: " << ThreeShip[1] << endl;
-				cout << "SFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;
+				cout << "SFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;*/
+				
+				showFP();
+				
 				cout << endl;
 				cout << endl;
 			}
