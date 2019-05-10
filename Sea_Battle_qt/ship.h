@@ -7,6 +7,9 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 #include <sys/shm.h>
+#include <stdint.h>
+
+using namespace std;
 
 class Ship: public QObject, public QGraphicsItem
 {
@@ -18,9 +21,9 @@ public:
     void set_y0(int y);
     int get_x();
     int get_y();
-    bool checkPlace(int* table, int i0, int j0);
+    bool checkPlace(int16_t* table, int i0, int j0);
     bool onTable();
-    bool aroundShip(int* table, int i0, int j0, int k, int l);                 //Проверка на рядом стоящие корабли.
+    bool aroundShip(int16_t* table, int i0, int j0, int k, int l);                 //Проверка на рядом стоящие корабли.
     void clearFromShip();
     bool Horisontal();
 
@@ -35,7 +38,7 @@ private:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event);
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event);
 
-    int typeOfShip;                     //Тип корабля.
+    int16_t typeOfShip;                 //Тип корабля.
     QPixmap TextureOfShip;              //Текстура корабля.
     int width;                          //Ширина текстуры корабля.
     int height = 42;                    //Высота текстуры корабля.
