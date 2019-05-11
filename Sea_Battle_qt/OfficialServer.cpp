@@ -10,7 +10,7 @@
 using namespace std;
 
 enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips,NotConnection, Ready, WaitingOfTurn, Turn};
-enum Msg_type {result_of_shot, enemy_shot, error};
+enum Msg_type {result_of_shot, enemy_shot, state_for_client, error};
 enum ResultOfShot {not_hit, hit, kill};
 
 struct Shot
@@ -57,6 +57,163 @@ void showSP()
 	}
 }
 
+void BurnAroundShip(int16_t* Field, int i0, int j0, int k, int l)
+{
+	for(int i = i0; i <= k; i++)
+	{
+		for(int j = j0; j <= l; j++)
+		{
+			Field[10 * i + j] = -1;
+		}
+	}
+}
+
+void FindBurnedShip(int16_t* Field, int typeOfShip)
+{
+	int ShipI = -1;
+        int ShipJ = -1;
+	
+	bool isHorisontal;
+
+	for(int i = 0; i < 10; i++)
+	{
+		for(int j = 0; j < 10; j++)
+		{
+			if(Field[10 * i + j] == -2)
+			{
+				ShipI = i;
+				ShipJ = j;
+				break;
+			}
+		}
+
+		if(ShipI != -1 && ShipJ != -1)
+		{
+			cout << "I'm in if()" << endl;
+			break;
+		}
+	}
+
+	if(typeOfShip != -1)
+	{
+		if(ShipI + 1 > 9)
+		{
+			isHorisontal = true;
+		}
+		else if(ShipJ + 1 > 9)
+		{
+			isHorisontal = false;
+		}
+		else
+		{
+			if(Field[10 * (ShipI + 1) + ShipJ] == -2)
+			{
+				isHorisontal = false;
+			}
+			else if(Field[10 * ShipI + ShipJ + 1] == -2)
+			{
+				isHorisontal = true;
+			}
+		}
+	}
+	else
+	{
+		isHorisontal = true;
+	}
+
+	if(isHorisontal)
+	{
+		if(ShipI - 1 < 0)	//Верх
+		{
+			if(ShipJ - 1 < 0)		//Верхний левый угол
+			{
+				BurnAroundShip(Field, ShipI, ShipJ, ShipI + 1, ShipJ + typeOfShip);
+			}
+			else if(ShipJ + typeOfShip > 9)	//Верхний правый угол
+			{
+				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
+			}
+			else		//Просто верх
+			{
+				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
+			}
+		}
+		else if(ShipI + 1 > 9)	//Низ
+		{
+			if(ShipJ - 1 < 0)	//Нижний левый угол
+			{	
+				BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI, ShipJ + typeOfShip);
+			}
+			else if(ShipJ + typeOfShip > 9)	//Нижний правый угол
+			{
+				BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip - 1);
+			}
+			else		//Просто низ
+			{
+				BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip);
+			}
+		}
+		else if(ShipJ - 1 < 0)	//Левый бок
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + 1, ShipJ + typeOfShip);
+		}
+		else if(ShipJ + typeOfShip > 9)	//Правый бок
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
+		}
+		else	//Не по краям
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
+		}
+	}
+	else
+	{
+		if(ShipI - 1 < 0)	//Верх
+		{
+			if(ShipJ - 1 < 0)	//Верхний левый
+			{
+				BurnAroundShip(Field, ShipI, ShipJ, ShipI + typeOfShip, ShipJ + 1);
+			}
+			else if(ShipJ + 1 > 9)	//Верхний правый
+			{
+				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ);
+			}
+			else		//Просто верх
+			{
+				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
+			}
+		}
+		else if(ShipI + typeOfShip > 9)	//Низ
+		{
+                        if(ShipJ - 1 < 0)    //Нижний левый
+                        {
+                                BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + typeOfShip - 1, ShipJ + 1);
+                        }
+                        else if(ShipJ + 1 > 9)       //Нижний правый
+                        {
+                                BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ);
+                        }
+                        else			//Просто низ
+                        {
+                                BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ + 1);
+                        }
+
+		}
+		else if(ShipJ - 1 < 0)	//Левый бок
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + typeOfShip, ShipJ + 1);
+		}
+		else if(ShipJ + 1 > 9)	//Правый бок
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ);
+		}
+		else	//Не по краям
+		{
+			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
+		}
+	}
+}
+
 void* DataFromFirstClient(void* NullData)
 {
 	stateOfFirstPlayer = PlacingShips;
@@ -76,8 +233,6 @@ void* DataFromFirstClient(void* NullData)
 
 	stateOfFirstPlayer = Turn;
 	//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
-	
-	cout << "State of SP: " << stateOfSecondPlayer << ", state of FP: " << stateOfFirstPlayer << endl;
 
 	//Информация о кораблях противника:
 	//i = 0: число кораблей на поле.
@@ -100,7 +255,7 @@ void* DataFromFirstClient(void* NullData)
 		}
 		else
 		{
-			if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1)
+			if((FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1) && (FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -2))
 			{
                                 Message MsgForSP;
                                 Message MsgForFP;
@@ -122,19 +277,21 @@ void* DataFromFirstClient(void* NullData)
 					if(typeOfShip == 1)
 					{
 						--OneShip;
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 						MsgForFP.Result = static_cast<int16_t>(hit);
 						MsgForSP.Result = static_cast<int16_t>(hit);
 					}
 					else if(typeOfShip == 2)
 					{
 						++TwoShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(TwoShip[1] == 2)
 						{
 							--TwoShip[0];
 							TwoShip[1] = 0;
+
+							FindBurnedShip(FieldOfSP, typeOfShip);
 						}
 						else
 						{
@@ -145,7 +302,7 @@ void* DataFromFirstClient(void* NullData)
 					else if(typeOfShip == 3)
 					{
 						++ThreeShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(ThreeShip[1] == 3)
 						{
@@ -161,7 +318,7 @@ void* DataFromFirstClient(void* NullData)
 					else if(typeOfShip == 4)
 					{
 						++FourShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(FourShip[1] == 4)
 						{
@@ -203,7 +360,7 @@ void* DataFromFirstClient(void* NullData)
 			}
 			else
                 	{
-                        	cout << InfoFromClient->PosX << " " << InfoFromClient->PosY << ": here burned!" << endl;
+                        	cout << "FP: " << InfoFromClient->PosX << " " << InfoFromClient->PosY << "- here burned!" << endl;
                 	}
 
 		}
@@ -255,7 +412,7 @@ void* DataFromSecondClient(void* NullData)
 		}
 		else
 		{
-			if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1)
+			if((FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1) && (FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -2))
 			{
 				Message MsgForFP;
 				Message MsgForSP;
@@ -276,7 +433,7 @@ void* DataFromSecondClient(void* NullData)
 					if(typeOfShip == 1)
 					{
 						--OneShip;
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						MsgForFP.Result = static_cast<int16_t>(hit);
 						MsgForSP.Result = static_cast<int16_t>(hit);
@@ -284,7 +441,7 @@ void* DataFromSecondClient(void* NullData)
 					else if(typeOfShip == 2)
 					{
 						++TwoShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(TwoShip[1] == 2)
 						{
@@ -300,7 +457,7 @@ void* DataFromSecondClient(void* NullData)
 					else if(typeOfShip == 3)
 					{
 						++ThreeShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(ThreeShip[1] == 3)
 						{
@@ -316,7 +473,7 @@ void* DataFromSecondClient(void* NullData)
 					else if(typeOfShip == 4)
 					{
 						++FourShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
 
 						if(FourShip[1] == 4)
 						{
@@ -355,6 +512,11 @@ void* DataFromSecondClient(void* NullData)
 				cout << endl;
 				cout << endl;
 			}
+			else
+                	{
+                       		cout << "SP: " << InfoFromClient->PosX << " " << InfoFromClient->PosY << "- here burned!" << endl;
+                	}
+
 		}
 
 		delete InfoFromClient;
