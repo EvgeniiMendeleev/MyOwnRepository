@@ -6,7 +6,8 @@ Ship::Ship(int TypeOfShip, int memID, QObject* parent):QObject(parent), QGraphic
     centerY = 21;
     typeOfShip = TypeOfShip;
     memId = memID;
-
+    
+    //В зависимости от типа корабля создаём объект с определённым набором параметров.
     switch(TypeOfShip)
     {
         case 1:
@@ -62,7 +63,6 @@ void Ship::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
 
 void Ship::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    //qDebug() << this->pos();
     this->setPos(mapToScene(event->pos().x() - centerX, event->pos().y() - centerY));
 }
 
@@ -223,6 +223,7 @@ void Ship::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
 bool Ship::checkPlace(int16_t* table, int i0, int j0)
 {
+    //Определяем в каком месте сетки располагается корабль в зависимости от положения в пространстве.
     if(isHorisontal)
     {
         if(j0 - 1 < 0 && i0 - 1 < 0)    //Верхний левый угол
@@ -313,6 +314,20 @@ bool Ship::onTable()
 
 bool Ship::aroundShip(int16_t* table, int i0, int j0, int k, int l)
 {   
+    //Проверяем наличие кораблей в данной области.
+    // Например, проверим область вокруг двухпалубника с координатами
+    // (x,y), (x, y + 1) на наличие какого - либо корабля в области j0 <= j <= l
+    // и i0 <= i <= k, когда двухпалубник горизонтален.
+    
+    /*
+     *       j0              l 
+     *    ........................
+     * i0 ... 0  0  0  0  0  0 ...
+     *    ... 0  4  4  4  4  0 ...
+     * k  ... 0  0  0  0  0  0 ...
+     *    ........................
+    */
+    
     for(int i = i0; i <= k; i++)
     {
         for(int j = j0; j <= l; j++)
