@@ -9,7 +9,7 @@
 
 using namespace std;
 
-enum states {WaitingOfReadyPlayer, WaitingOfConnection, PlacingShips, Win, Lose, NotConnection, Ready, WaitingOfTurn, Turn};
+enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips,NotConnection, Ready, WaitingOfTurn, Turn};
 enum Msg_type {result_of_shot, enemy_shot, error};
 enum ResultOfShot {not_hit, hit, kill};
 
@@ -76,6 +76,8 @@ void* DataFromFirstClient(void* NullData)
 
 	stateOfFirstPlayer = Turn;
 	//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+	
+	cout << "State of SP: " << stateOfSecondPlayer << ", state of FP: " << stateOfFirstPlayer << endl;
 
 	//Информация о кораблях противника:
 	//i = 0: число кораблей на поле.
