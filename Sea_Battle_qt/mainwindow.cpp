@@ -14,17 +14,17 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    
+
     //------Устанавливаем начальные параметры для главного окна и сцены------
     setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
-    
+
     ui->Frame->setFixedSize(QSize(WidthOfFrame, HeightOfFrame));
     ui->Frame->hide();
     ui->Frame->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
     ui->Frame->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff);
     ui->BattleButton->hide();
     //-----------------------------------------------------------------------
-    
+
     //---Загружаем заранее картинки с попаданием и промахом---
     BUNG.load(":/img/красный-крестик.png");
     BUNG = BUNG.scaled(24, 24);
@@ -32,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent) :
     NotBUNG.load(":/img/BlackDot.png");
     NotBUNG = NotBUNG.scaled(24, 24);
     //--------------------------------------------------------
-    
+
     //---Устанавливаем интервал таймера---
     MyTimer = new QTimer;
     MyTimer->setInterval(50);
@@ -58,7 +58,7 @@ void MainWindow::on_Connection_clicked()
     QByteArray tmp = IPaddress.toLatin1();
     const char* IP = tmp.data();
     //-------------------------------------------------------------------------
-    
+
     ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);  //Создаём сокет для общения с сервером.
 
     //------Если создание прошло неуспешно, то выводим сообщение.------
@@ -67,7 +67,7 @@ void MainWindow::on_Connection_clicked()
         qDebug() << "Error with socket()";
     }
     //-----------------------------------------------------------------
-    
+
     //------Формируем структуру с данным о хосте, к которому хотим подключиться.------
     struct sockaddr_in ServerAddr;
 
@@ -101,16 +101,16 @@ void MainWindow::Preparing_for_Battle()
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
     scene->addPixmap(frame);
     //------------------------------------------------------------------------------------
-    
+
     //-------Выделяем память для работы с сеткой кораблей и обрабатываем ошибку.-------
     memID = shmget(IPC_PRIVATE, 100 * sizeof(int16_t), 0600|IPC_CREAT|IPC_EXCL);
-    
+
     if(memID < 0)
     {
         qDebug() << "Error with shmget()";
     }
     //---------------------------------------------------------------------------------
-    
+
     //---Изначально инициализируем массив нулями, обозначающие, что в клетке ничего нету.---
     table = (int16_t*)shmat(memID, 0, 0);
 
@@ -119,7 +119,7 @@ void MainWindow::Preparing_for_Battle()
         table[i] = 0;
     }
     //--------------------------------------------------------------------------------------
-    
+
     //Отображаем все корабли. Всего их 10:
     //1 - четырёхпалубник
     //2 - трёхпалубника
@@ -128,7 +128,7 @@ void MainWindow::Preparing_for_Battle()
     MyShips.resize(10);
 
     //Отображаем четырёхпалубник
-    MyShips[0] = new Ship(4, memID);
+    MyShips[0] = new Ship(4, 10, memID);
     MyShips[0]->set_x0(28); //10
     MyShips[0]->set_y0(149); //92
     MyShips[0]->setPos(28, 149);
@@ -137,7 +137,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем трёхпалубники
     for(int i = 1; i < 3; i++)
     {
-        MyShips[i] = new Ship(3, memID);
+        MyShips[i] = new Ship(3, 7 + i ,memID);
         MyShips[i]->set_x0(28 + (i - 1) * 100);
         MyShips[i]->set_y0(196);
         MyShips[i]->setPos(28 + (i - 1) * 100, 196);
@@ -147,7 +147,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем двухпалубники
     for(int i = 3; i < 6; i++)
     {
-        MyShips[i] = new Ship(2, memID);
+        MyShips[i] = new Ship(2, 2 + i ,memID);
         MyShips[i]->set_x0(28 + (i - 3) * 70);
         MyShips[i]->set_y0(243);
         MyShips[i]->setPos(28 + (i - 3) * 70, 243);
@@ -157,7 +157,7 @@ void MainWindow::Preparing_for_Battle()
     //Отображаем однопалубники
     for(int i = 6; i < 10; i++)
     {
-        MyShips[i] = new Ship(1, memID);
+        MyShips[i] = new Ship(1, i - 5, memID);
         MyShips[i]->set_x0(28 + (i - 6) * 40);
         MyShips[i]->set_y0(290);
         MyShips[i]->setPos(28 + (i - 6) * 40, 290);
@@ -191,10 +191,10 @@ void MainWindow::on_BattleButton_clicked()
         }
     }
     //-------------------------------------------------
-    
+
     send(ClientSocket, table, 100 * sizeof(int16_t), MSG_NOSIGNAL);     //Отправляем расположение кораблей на сервер.
     shmctl(memID, IPC_RMID, 0);
-    
+
     ui->Frame->hide();
     ui->BattleButton->hide();
 
@@ -258,17 +258,17 @@ void MainWindow::BATTLE()
     connect(Table, &BattleTable::fire, this, &MainWindow::SendFire);
     scene->addItem(Table);
     //---------------------------------------------------------------
-    
+
     ui->Frame->setScene(scene);
     ui->Frame->show();
-    
+
     /*
      * Подключаем сигнал истечения времени к ReadFromServer(), чтобы читать данные с сокета,
      * и делаем сокет неблокируемым, чтобы не подвисал клиент.
     */
     connect(MyTimer, &QTimer::timeout, this, &MainWindow::ReadFromServer);
     fcntl(ClientSocket, F_SETFL, O_NONBLOCK);
-    
+
     MyTimer->start(); //Запускаем таймер.
 }
 
@@ -288,11 +288,11 @@ void MainWindow::ReadFromServer()
 {
     int16_t buffer[4];              //Буфер для чтения сообщения
 
-    //Читаем только первые sizeof(int16_t) байт для определения типа сообщения.  
+    //Читаем только первые sizeof(int16_t) байт для определения типа сообщения.
     if(recv(ClientSocket, buffer, sizeof(int16_t), MSG_NOSIGNAL) > 0)
     {
         Msg_type type = static_cast<Msg_type>(buffer[0]);
-        
+
         /*
          * После определения типа сообщения читаем остальные
          * sizeof(какая_то_структура_сообщения) - sizeof(int16_t)
@@ -372,12 +372,3 @@ Message* MainWindow::convertToStruct(int16_t* buffer, Msg_type type)
         return NewMessage;
     }
 }
-
-
-/*
-qDebug() << "type = " << type;
-qDebug() << "MsgFromServer->Result = " << MsgFromServer->Result;
-qDebug() << "MsgFromServer->PosX = " << MsgFromServer->PosX;
-qDebug() << "MsgFromServer->PosY = " << MsgFromServer->PosY;
-qDebug() << "MsgFromServer->type = " << MsgFromServer->type;
-*/
