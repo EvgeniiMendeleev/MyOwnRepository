@@ -1,12 +1,13 @@
 #include "ship.h"
 #include <QDebug>
 
-Ship::Ship(int TypeOfShip, int memID, QObject* parent):QObject(parent), QGraphicsItem()
+Ship::Ship(int16_t TypeOfShip, int16_t ID, int memID, QObject* parent):QObject(parent), QGraphicsItem()
 {
     centerY = 21;
     typeOfShip = TypeOfShip;
     memId = memID;
-    
+    shipID = ID;
+
     //В зависимости от типа корабля создаём объект с определённым набором параметров.
     switch(TypeOfShip)
     {
@@ -110,7 +111,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
                     for(int l = j; l < j + typeOfShip; l++)
                     {
-                        table[10 * i + l] = typeOfShip;
+                        table[10 * i + l] = shipID;
                     }
 
                     this->x = j;//this->pos().x();
@@ -162,7 +163,7 @@ void Ship::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
                     for(int k = i; k < i + typeOfShip; k++)
                     {
-                        table[10 * k + j] = typeOfShip;
+                        table[10 * k + j] = shipID;
                     }
 
                     this->x = j; //this->pos().x() - 31;
@@ -318,16 +319,16 @@ bool Ship::aroundShip(int16_t* table, int i0, int j0, int k, int l)
     // Например, проверим область вокруг двухпалубника с координатами
     // (x,y), (x, y + 1) на наличие какого - либо корабля в области j0 <= j <= l
     // и i0 <= i <= k, когда двухпалубник горизонтален.
-    
+
     /*
-     *       j0              l 
+     *       j0              l
      *    ........................
      * i0 ... 0  0  0  0  0  0 ...
      *    ... 0  4  4  4  4  0 ...
      * k  ... 0  0  0  0  0  0 ...
      *    ........................
     */
-    
+
     for(int i = i0; i <= k; i++)
     {
         for(int j = j0; j <= l; j++)
