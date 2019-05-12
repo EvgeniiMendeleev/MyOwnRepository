@@ -6,10 +6,11 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <iostream>
-
+#include <clocale>
+#include <fcntl.h>
 using namespace std;
 
-enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips,NotConnection, Ready, WaitingOfTurn, Turn};
+enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips, Ready, WaitingOfTurn, Turn};
 enum Msg_type {result_of_shot, enemy_shot, state_for_client, error};
 enum ResultOfShot {not_hit, hit, kill};
 
@@ -25,6 +26,12 @@ struct Message
 	int16_t PosX;
 	int16_t PosY;
 	int16_t Result;
+};
+
+struct StateForClient
+{
+	int16_t type = static_cast<state_for_client>;
+	int16_t state;
 };
 
 int FirstPlayer, SecondPlayer;
@@ -57,19 +64,62 @@ void showSP()
 	}
 }
 
+bool DeadShips(int* LifeOfShip)
+{
+	int count = 0;
+
+	for(int i = 0; i < 10; i++)
+	{
+		if(LifeOfShip[i] == 0)
+		{
+			++count;
+		}
+	}
+
+	if(count == 10)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 void BurnAroundShip(int16_t* Field, int i0, int j0, int k, int l)
 {
 	for(int i = i0; i <= k; i++)
 	{
 		for(int j = j0; j <= l; j++)
 		{
-			Field[10 * i + j] = -1;
+			Field[10 * i + j] = -11;
 		}
 	}
 }
 
-void FindBurnedShip(int16_t* Field, int typeOfShip)
+void FindBurnedShip(int16_t* Field, int16_t shipID)
 {
+	int typeOfShip;
+
+	if(shipID >= 1 && shipID <= 4)
+	{
+		typeOfShip = 1;
+	}
+	else if(shipID >= 5 && shipID <= 7)
+	{
+		typeOfShip = 2;
+	}
+	else if(shipID >= 8 && shipID <= 9)
+	{
+		typeOfShip = 3;
+	}
+	else if(shipID == 10)
+	{
+		typeOfShip = 4;
+	}
+
+	int minusShipID = -shipID;
+
 	int ShipI = -1;
         int ShipJ = -1;
 	
@@ -79,7 +129,7 @@ void FindBurnedShip(int16_t* Field, int typeOfShip)
 	{
 		for(int j = 0; j < 10; j++)
 		{
-			if(Field[10 * i + j] == -2)
+			if(Field[10 * i + j] == minusShipID)
 			{
 				ShipI = i;
 				ShipJ = j;
@@ -94,7 +144,7 @@ void FindBurnedShip(int16_t* Field, int typeOfShip)
 		}
 	}
 
-	if(typeOfShip != -1)
+	if(typeOfShip != 1)
 	{
 		if(ShipI + 1 > 9)
 		{
@@ -106,11 +156,11 @@ void FindBurnedShip(int16_t* Field, int typeOfShip)
 		}
 		else
 		{
-			if(Field[10 * (ShipI + 1) + ShipJ] == -2)
+			if(Field[10 * (ShipI + 1) + ShipJ] == minusShipID)
 			{
 				isHorisontal = false;
 			}
-			else if(Field[10 * ShipI + ShipJ + 1] == -2)
+			else if(Field[10 * ShipI + ShipJ + 1] == minusShipID)
 			{
 				isHorisontal = true;
 			}
@@ -222,7 +272,7 @@ void* DataFromFirstClient(void* NullData)
 
 	showFP();
 
-	cout << "In First Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+	cout << "В первом потоке: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	if(stateOfSecondPlayer == PlacingShips)
 	{
@@ -234,139 +284,125 @@ void* DataFromFirstClient(void* NullData)
 	stateOfFirstPlayer = Turn;
 	//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
 
-	//Информация о кораблях противника:
-	//i = 0: число кораблей на поле.
-	//i = 1: число подбитых палуб этого корабля.
+    	/*
+         * Информация о кораблях противника.
+         * -------------------------------------------------------
+         * i = 0,9 - индентификаторы кораблей,
+         * которые получаются как i = FieldOf**[10 * x + y] - 1.
+         * -------------------------------------------------------
+        */
 
-	int OneShip = 4;
-        int TwoShip[2] = {3, 0};
-        int ThreeShip[2] = {2, 0};
-        int FourShip[2] = {1, 0};
+        int LifeOfShip[10];
 
-	while(OneShip || TwoShip[0] || ThreeShip[0] || FourShip[0])
+        for(int i = 0; i < 10; i++)
+        {
+                if(i >= 0 && i <= 3)
+                {
+                        LifeOfShip[i] = 1;
+                }
+                else if(i >= 4 && i <= 6)
+                {
+                        LifeOfShip[i] = 2;
+                }
+                else if(i >= 7 && i <= 8)
+                {
+                        LifeOfShip[i] = 3;
+                }
+                else if(i == 9)
+                {
+                        LifeOfShip[i] = 4;
+                }
+        }
+
+	fcntl(FirstPlayer, F_SETFL, O_NONBLOCK);
+
+	bool DeadAllShips = false;
+
+	while(!DeadAllShips && (stateOfSecondPlayer != Win))
 	{
 		Shot* InfoFromClient = new Shot;
 
-		recv(FirstPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL);
+		if(recv(FirstPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL) > 0)
+		{
 
 		if(stateOfFirstPlayer != Turn)
 		{
-			cout << "FirstPlayer, nizya! Sidi i jdi!" << endl;
+			cout << "Первый игрок, не наглей, а! Сиди и жди!" << endl;
 		}
 		else
 		{
-			if((FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1) && (FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -2))
+			if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] > 0)
 			{
-                                Message MsgForSP;
-                                Message MsgForFP;
+				Message MsgForFP, MsgForSP;
 
-                                MsgForFP.type = static_cast<int16_t>(result_of_shot);
+				MsgForFP.type = static_cast<int16_t>(result_of_shot);
 				MsgForFP.PosX = InfoFromClient->PosX;
 				MsgForFP.PosY = InfoFromClient->PosY;
 
-                                MsgForSP.type = static_cast<int16_t>(enemy_shot);
-                                MsgForSP.PosX = InfoFromClient->PosX;
-                                MsgForSP.PosY = InfoFromClient->PosY;
-
+				MsgForSP.type = static_cast<int16_t>(enemy_shot);
+				MsgForSP.PosX = InfoFromClient->PosX;
+				MsgForSP.PosY = InfoFromClient->PosY;
 
 				if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
 				{
-					cout << "First player bung in  " << FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
-					int16_t typeOfShip = FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
+					int16_t shipID = FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
+				
+					--LifeOfShip[shipID - 1];
+					FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -shipID;
 
-					if(typeOfShip == 1)
+					if(LifeOfShip[shipID - 1] == 0)
 					{
-						--OneShip;
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
+						FindBurnedShip(FieldOfSP, shipID);
+
+						MsgForFP.Result = static_cast<int16_t>(kill);
+						MsgForSP.Result = static_cast<int16_t>(kill);
+					}
+					else
+					{
 						MsgForFP.Result = static_cast<int16_t>(hit);
 						MsgForSP.Result = static_cast<int16_t>(hit);
-					}
-					else if(typeOfShip == 2)
-					{
-						++TwoShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(TwoShip[1] == 2)
-						{
-							--TwoShip[0];
-							TwoShip[1] = 0;
-
-							FindBurnedShip(FieldOfSP, typeOfShip);
-						}
-						else
-						{
-							MsgForSP.Result = static_cast<int16_t>(hit);
-							MsgForFP.Result = static_cast<int16_t>(hit);
-						}
-					}
-					else if(typeOfShip == 3)
-					{
-						++ThreeShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(ThreeShip[1] == 3)
-						{
-							--ThreeShip[0];
-							ThreeShip[1] = 0;
-						}
-						else
-						{
-							MsgForSP.Result = static_cast<int16_t>(hit);
-							MsgForFP.Result = static_cast<int16_t>(hit);
-						}
-					}
-					else if(typeOfShip == 4)
-					{
-						++FourShip[1];
-						FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(FourShip[1] == 4)
-						{
-							--FourShip[0];
-							FourShip[1] = 0;
-						}
-						else
-						{
-							MsgForSP.Result = static_cast<int16_t>(hit);
-							MsgForFP.Result = static_cast<int16_t>(hit);
-						}
 					}
 				}
 				else
 				{
-					FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+					FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -11;
 
-					MsgForSP.Result = static_cast<int16_t>(not_hit);
+					cout << "Первый игрок не попал!" << endl;
+
 					MsgForFP.Result = static_cast<int16_t>(not_hit);
-					
-					cout << "First Player not bung!\n";
-					
+					MsgForSP.Result = static_cast<int16_t>(not_hit);
+
 					stateOfFirstPlayer = WaitingOfTurn;
 					stateOfSecondPlayer = Turn;
 				}
 
+				showSP();
+
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
 
-				/*cout << "FOne: " << OneShip << ", Palub: " << OneShip << endl;;
-                                cout << "FTwo: " << TwoShip[0] << ", Palub: " << TwoShip[1] << endl;
-                                cout << "FThree: " << ThreeShip[0] << ", Palub: " << ThreeShip[1] << endl;
-                                cout << "FFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;*/
+				DeadAllShips = DeadShips(LifeOfShip);
 
-				showSP();
-
-				cout << endl;
-				cout << endl;
+				if(DeadAllShips)
+				{
+					cout << "====================" << endl;
+					cout << "Первый игрок выиграл" << endl;
+					cout << "====================" << endl;
+					stateOfFirstPlayer = Win;
+				}
 			}
 			else
-                	{
-                        	cout << "FP: " << InfoFromClient->PosX << " " << InfoFromClient->PosY << "- here burned!" << endl;
-                	}
-
+			{
+				cout << "На поле второго игрока в координатах (" << InfoFromClient->PosY << ";" << InfoFromClient->PosX << ") подбито!" << endl;
+			}
 		}
-
+		}
 		delete InfoFromClient;
 	}
+
+	cout << "++++++++++++++++++++++++++++" << endl;
+	cout << "Первый поток завершил работу" << endl;
+	cout << "++++++++++++++++++++++++++++" << endl;
 
 	pthread_exit(0);
 }
@@ -379,7 +415,7 @@ void* DataFromSecondClient(void* NullData)
 
 	showSP();
 
-	cout << "In Second Thread: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+	cout << "В втором потоке: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	if(stateOfFirstPlayer == PlacingShips)
 	{
@@ -391,31 +427,55 @@ void* DataFromSecondClient(void* NullData)
 	
 	stateOfSecondPlayer = WaitingOfTurn;
 	//send(*secondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
+	
+	/*
+	 * Информация о кораблях противника.
+	 * -------------------------------------------------------
+	 * i = 0,9 - индентификаторы кораблей,
+	 * которые получаются как i = FieldOf**[10 * x + y] - 1.
+	 * -------------------------------------------------------
+	*/
 
-	//Информация о кораблях противника:
-	//i = 0: число кораблей на поле.
-	//i = 1: число подбитых палуб этого корабля.
-	int OneShip = 4;
-	int TwoShip[2] = {3, 0};
-	int ThreeShip[2] = {2, 0};
-	int FourShip[2] = {1, 0};
+	int LifeOfShip[10];
 
-	while(OneShip || TwoShip[0] || ThreeShip[0] || FourShip[0])
+	for(int i = 0; i < 10; i++)
+	{
+		if(i >= 0 && i <= 3)
+		{
+			LifeOfShip[i] = 1;
+		}
+		else if(i >= 4 && i <= 6)
+		{
+			LifeOfShip[i] = 2;
+		}
+		else if(i >= 7 && i <= 8)
+		{
+			LifeOfShip[i] = 3;
+		}
+		else if(i == 9)
+		{
+			LifeOfShip[i] = 4;
+		}
+	}
+
+	fcntl(SecondPlayer, F_SETFL, O_NONBLOCK);
+
+	bool DeadAllShips = false;
+
+	while(!DeadAllShips && (stateOfFirstPlayer != Win))
 	{
 		Shot* InfoFromClient = new Shot;
-
-		recv(SecondPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL);
-
+		if(recv(SecondPlayer, InfoFromClient, sizeof(Shot), MSG_NOSIGNAL) > 0)
+		{
 		if(stateOfSecondPlayer != Turn)
 		{
-			cout << "SecondPlayer, nizya! Sidi i jdi!" << endl;
+			cout << "Второй игрок, не наглей, а! Сиди и жди!" << endl;
 		}
 		else
 		{
-			if((FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -1) && (FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != -2))
+			if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] > 0)
 			{
-				Message MsgForFP;
-				Message MsgForSP;
+				Message MsgForFP, MsgForSP;
 
 				MsgForFP.type = static_cast<int16_t>(enemy_shot);
 				MsgForFP.PosX = InfoFromClient->PosX;
@@ -427,109 +487,71 @@ void* DataFromSecondClient(void* NullData)
 
 				if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] != 0)
 				{
-					cout << "Second player bung in " << FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] << endl;
-					int16_t typeOfShip = FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
+					int16_t shipID = FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
 
-					if(typeOfShip == 1)
+					--LifeOfShip[shipID - 1];
+					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosY] = -shipID;
+
+					if(LifeOfShip[shipID - 1] == 0)
 					{
-						--OneShip;
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
+						FindBurnedShip(FieldOfFP, shipID);
 
+						MsgForFP.Result = static_cast<int16_t>(kill);
+						MsgForSP.Result = static_cast<int16_t>(kill);
+					}
+					else
+					{
 						MsgForFP.Result = static_cast<int16_t>(hit);
 						MsgForSP.Result = static_cast<int16_t>(hit);
-					}
-					else if(typeOfShip == 2)
-					{
-						++TwoShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(TwoShip[1] == 2)
-						{
-							--TwoShip[0];
-							TwoShip[1] = 0;
-						}
-						else
-						{
-							MsgForFP.Result = static_cast<int16_t>(hit);
-							MsgForSP.Result = static_cast<int16_t>(hit);
-						}
-					}
-					else if(typeOfShip == 3)
-					{
-						++ThreeShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(ThreeShip[1] == 3)
-						{
-							--ThreeShip[0];
-							ThreeShip[1] = 0;
-						}
-						else
-						{
-							MsgForFP.Result = static_cast<int16_t>(hit);
-							MsgForSP.Result = static_cast<int16_t>(hit);
-						}
-					}
-					else if(typeOfShip == 4)
-					{
-						++FourShip[1];
-						FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -2;
-
-						if(FourShip[1] == 4)
-						{
-							--FourShip[0];
-							FourShip[1] = 0;
-						}
-						else
-						{
-							MsgForFP.Result = static_cast<int16_t>(hit);
-							MsgForSP.Result = static_cast<int16_t>(hit);
-						}
 					}
 				}
 				else
 				{
-					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -1;
+					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -11;
 
-					MsgForSP.Result = static_cast<int16_t>(not_hit);
-					MsgForFP.Result = static_cast<int16_t>(not_hit);
-
-					cout << "Second player not bung!\n";
+					cout << "Второй игрок не попал!" << endl;
 					
-					stateOfSecondPlayer = WaitingOfTurn;
+					MsgForFP.Result = static_cast<int16_t>(not_hit);
+					MsgForSP.Result = static_cast<int16_t>(not_hit);
+
 					stateOfFirstPlayer = Turn;
+					stateOfSecondPlayer = WaitingOfTurn;
 				}
+
+				showFP();
 
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
-				/*cout << "SOne: " << OneShip << ", Palub: " << OneShip << endl;
-				cout << "STwo: " << TwoShip[0] << ", Palub: " << TwoShip[1] << endl;
-				cout << "SThree: " << ThreeShip[0] << ", Palub: " << ThreeShip[1] << endl;
-				cout << "SFour: " << FourShip[0] << ", Palub: " << FourShip[1] << endl;*/
-				
-				showFP();
-				
-				cout << endl;
-				cout << endl;
+
+				DeadAllShips = DeadShips(LifeOfShip);
+
+				if(DeadAllShips)
+				{
+					cout << "=======================" << endl;
+					cout << "Второй игрок выиграл!!!" << endl;
+					cout << "=======================" << endl;
+					stateOfSecondPlayer = Win;
+				}
 			}
 			else
-                	{
-                       		cout << "SP: " << InfoFromClient->PosX << " " << InfoFromClient->PosY << "- here burned!" << endl;
-                	}
-
+			{
+				cout << "На поле первого игрока (" << InfoFromClient->PosY << ";" << InfoFromClient->PosX << ") подбито" << endl;
+			}
 		}
-
+		}
 		delete InfoFromClient;
 	}
+
+	cout << "============================" << endl;
+	cout << "Второй поток завершил работу" << endl;
+	cout << "============================" << endl;
 
 	pthread_exit(0);
 }
 
 int main()
 {
-	stateOfFirstPlayer = stateOfSecondPlayer = NotConnection;
-
-	cout << "Behind Threads 1: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+	setlocale(LC_ALL, "Russian");
 
 	//---------------Создание слушающего сокета---------------------
 	int MasterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -550,23 +572,23 @@ int main()
 
 	if(FirstPlayer > 0)
 	{
-		printf("First player connected!\n");
+		printf("Первый игрок подключился!\n");
 		stateOfFirstPlayer = WaitingOfConnection;
 		//send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
 	}
 	else
 	{
-		printf("Connection had failed!\n");
+		printf("Соединение провалено!\n");
 		return 0;
 	}
 
-	cout << "Behind Threads 2: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+	cout << "После подключения первого игрока: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	SecondPlayer = accept(MasterSocket, 0, 0);
 
 	if(SecondPlayer > 0)
 	{
-		printf("Second player connected!\n");
+		printf("Второй игрок подключился!\n");
 		
 		stateOfFirstPlayer = stateOfSecondPlayer = PlacingShips;
 		
@@ -575,12 +597,12 @@ int main()
 	}
 	else
 	{
-		printf("Connection had failed!\n");
+		printf("Соединение провалено!\n");
 		return 0;
 	}
 	//------------------------------------------------------
 	
-	cout << "Behind Threads 3: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
+	cout << "После подключения всех игроков: " << stateOfFirstPlayer << " " << stateOfSecondPlayer << "\n";
 
 	//----------------------Процесс игры----------------------
 	void* Null = NULL;
