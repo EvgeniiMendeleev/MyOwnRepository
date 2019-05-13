@@ -42,9 +42,11 @@ enum Msg_type {result_of_shot,
                error};      //Тип сообщений, отправляемых с сервера клиенту.
 
 enum states {WaitingOfReadyPlayer,
-             WaitingOfConnection, 
-             Win, 
-             Lose};         //Состояния клиента, для отображения соответствующих сообщений на экране. 
+             WaitingOfConnection,
+             Win,
+             Lose,
+             PlacingShips,
+             Battle};         //Состояния клиента, для отображения соответствующих сообщений на экране.
 
 struct Shot         //Выстрел, отправляемый на сервер.
 {
@@ -55,9 +57,17 @@ struct Shot         //Выстрел, отправляемый на сервер
 struct Message      //Сообщение, получаемое с сервера.
 {
     int16_t type;
+    int16_t Result;
     int16_t PosX;
     int16_t PosY;
+};
+
+struct DotsAroundShip
+{
+    int16_t type;
     int16_t Result;
+    int16_t CountOfDots;
+    Shot CoorDots[14];
 };
 
 struct StateForClient   //Сообщение о состоянии клиента для вывода промежуточных окон.
@@ -77,8 +87,8 @@ public:
      void Main_Menu_off();                                       //Функция для скрытия кадра главного меню.
      void Main_Menu_on();                                        //Функция для отображения кадра главного меню.
      void BATTLE();                                              //Функция для отображения кадра с битвой.
-     Message* convertToStruct(int16_t* buffer, Msg_type type);   //Функция для конвертации данных, отпраленных с сервера, в структуру для удобства работы.
-
+     Message* convertToMessage(int16_t* buffer);                 //Функция для конвертации данных, отпраленных с сервера, в структуру для удобства работы.
+     DotsAroundShip* convertToDAS(int16_t* buffer);
 private slots:
     void on_Connection_clicked();                //Кнопка подключения в главном меню.
     void on_BattleButton_clicked();              //Кнопка готовности на этапе расстановки кораблей.
