@@ -33,6 +33,9 @@ MainWindow::MainWindow(QWidget *parent) :
     NotBUNG = NotBUNG.scaled(24, 24);
     //--------------------------------------------------------
 
+    //Создаём сцену, на которой будет отображаться какой - либо фрейм.
+    scene = new QGraphicsScene();
+
     //---Устанавливаем интервал таймера---
     MyTimer = new QTimer;
     MyTimer->setInterval(50);
@@ -79,7 +82,14 @@ void MainWindow::on_Connection_clicked()
     //---------------------------Пытаемся подключиться к серверу---------------------------
     if(::connect(ClientSocket, (struct sockaddr*) (&ServerAddr), sizeof(ServerAddr)) != -1)
     {
-        Preparing_for_Battle();
+        /*
+         * Подключаем сигнал истечения времени к ReadFromServer(), чтобы читать данные с сокета,
+         * и делаем сокет неблокируемым, чтобы не подвисал клиент.
+        */
+        connect(MyTimer, &QTimer::timeout, this, &MainWindow::ReadFromServer);
+        fcntl(ClientSocket, F_SETFL, O_NONBLOCK);
+
+        MyTimer->start(); //Запускаем таймер.
     }
     else
     {
@@ -90,12 +100,6 @@ void MainWindow::on_Connection_clicked()
 
 void MainWindow::Preparing_for_Battle()
 {
-    //Отключаем главное меню, чтобы перейти к подготовке к битве
-    Main_Menu_off();
-
-    //Создаём сцену, на которой будет фрейм с подготовкой к битве
-    scene = new QGraphicsScene();
-
     //-----------------Загружаем бэкграунд и подгоняем под размер фрейма.-----------------
     frame.load(":/img/PreparingForBattle.png");
     frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
@@ -192,13 +196,15 @@ void MainWindow::on_BattleButton_clicked()
     }
     //-------------------------------------------------
 
+    for(int i = 0; i < 10; i++)
+    {
+        MyShips[i]->hide();
+    }
+
     send(ClientSocket, table, 100 * sizeof(int16_t), MSG_NOSIGNAL);     //Отправляем расположение кораблей на сервер.
     shmctl(memID, IPC_RMID, 0);
 
-    ui->Frame->hide();
     ui->BattleButton->hide();
-
-    BATTLE();
 }
 
 void MainWindow::BATTLE()
@@ -261,114 +267,209 @@ void MainWindow::BATTLE()
 
     ui->Frame->setScene(scene);
     ui->Frame->show();
-
-    /*
-     * Подключаем сигнал истечения времени к ReadFromServer(), чтобы читать данные с сокета,
-     * и делаем сокет неблокируемым, чтобы не подвисал клиент.
-    */
-    connect(MyTimer, &QTimer::timeout, this, &MainWindow::ReadFromServer);
-    fcntl(ClientSocket, F_SETFL, O_NONBLOCK);
-
-    MyTimer->start(); //Запускаем таймер.
 }
 
 void MainWindow::SendFire(int16_t x, int16_t y)
 {
     //Здесь мы просто формируем структуру Shot для отправки выстрела на сервер
-    Shot* InfoForServer = new Shot;
-    InfoForServer->PosX = x;
-    InfoForServer->PosY = y;
+    Shot InfoForServer;
+    InfoForServer.PosX = x;
+    InfoForServer.PosY = y;
 
-    send(ClientSocket, InfoForServer, sizeof(InfoForServer), MSG_NOSIGNAL);
-
-    delete InfoForServer;
+    send(ClientSocket, &InfoForServer, sizeof(InfoForServer), MSG_NOSIGNAL);
 }
 
 void MainWindow::ReadFromServer()
 {
-    int16_t buffer[4];              //Буфер для чтения сообщения
+    int16_t buffer[31];
 
-    //Читаем только первые sizeof(int16_t) байт для определения типа сообщения.
     if(recv(ClientSocket, buffer, sizeof(int16_t), MSG_NOSIGNAL) > 0)
     {
         Msg_type type = static_cast<Msg_type>(buffer[0]);
 
-        /*
-         * После определения типа сообщения читаем остальные
-         * sizeof(какая_то_структура_сообщения) - sizeof(int16_t)
-         * и делаем определённые действия.
-        */
-        if(type == result_of_shot)
-        { 
-            recv(ClientSocket, &buffer[1], sizeof(Message) - sizeof(int16_t), MSG_NOSIGNAL);
+        if(type == state_for_client)
+        {
+            recv(ClientSocket, &buffer[1], sizeof(int16_t), MSG_NOSIGNAL);
+            StateOfClient = static_cast<states>(buffer[1]);
 
-            Message* MsgFromServer = convertToStruct(buffer, type);
+            qDebug() << "state = " << StateOfClient;
 
-            int16_t PosX = MsgFromServer->PosX;
-            int16_t PosY = MsgFromServer->PosY;
-            ResultOfShot Result = static_cast<ResultOfShot>(MsgFromServer->Result);
-
-            if(Result == hit)
+            if(StateOfClient == WaitingOfConnection)
             {
-                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
-                item->setPos(322 + 24 * PosX, 102 + 24 * PosY);
+                //Отключаем главное меню, чтобы перейти к подготовке к битве
+                Main_Menu_off();
+
+                frame.load(":/img/WaitingOfConnection.jpg");
+                frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+                scene->addPixmap(frame);
+
+                ui->Frame->setScene(scene);
+                ui->Frame->show();
             }
-            else if(Result == not_hit)
+            else if(StateOfClient == PlacingShips)
             {
+                Preparing_for_Battle();
+            }
+            else if(StateOfClient == WaitingOfReadyPlayer)
+            {
+                frame.load(":/img/WaitingOfReadyPlayer.jpg");
+                frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+                scene->addPixmap(frame);
+
+                ui->Frame->setScene(scene);
+                ui->Frame->show();
+            }
+            else if(StateOfClient == Battle)
+            {
+                BATTLE();
+            }
+            else if(StateOfClient == Win)
+            {
+                frame.load(":/img/Winner.jpg");
+                frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+                scene->addPixmap(frame);
+
+                ui->Frame->setScene(scene);
+                ui->Frame->show();
+
+                delete Table;
+            }
+            else if(StateOfClient == Lose)
+            {
+                frame.load(":/img/Loser.jpg");
+                frame = frame.scaled(ui->Frame->geometry().width(), ui->Frame->geometry().height());
+                scene->addPixmap(frame);
+
+                ui->Frame->setScene(scene);
+                ui->Frame->show();
+
+                delete Table;
+            }
+        }
+        else if(type == result_of_shot)
+        {
+            recv(ClientSocket, &buffer[1], sizeof(int16_t), MSG_NOSIGNAL);
+            ResultOfShot Result = static_cast<ResultOfShot>(buffer[1]);
+
+            if(Result == not_hit)
+            {
+                recv(ClientSocket, &buffer[2], sizeof(Message) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+
+                Message* MsgFromServer = convertToMessage(buffer);
+
+                int16_t PosX = MsgFromServer->PosX;
+                int16_t PosY = MsgFromServer->PosY;
+
                 QGraphicsPixmapItem* item = scene->addPixmap(NotBUNG);
                 item->setPos(322 + 24 * PosX, 102 + 24 * PosY);
+
+                delete MsgFromServer;
+            }
+            else if(Result == hit)
+            {
+                recv(ClientSocket, &buffer[2], sizeof(Message) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+
+                Message* MsgFromServer = convertToMessage(buffer);
+
+                int16_t PosX = MsgFromServer->PosX;
+                int16_t PosY = MsgFromServer->PosY;
+
+                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
+                item->setPos(322 + 24 * PosX, 102 + 24 * PosY);
+
+                delete MsgFromServer;
             }
             else if(Result == kill)
             {
-                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
-                item->setPos(322 + 24 * PosX, 102 + 24 * PosY);
-            }
+                recv(ClientSocket, &buffer[2], sizeof(DotsAroundShip) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+                DotsAroundShip* Dots = convertToDAS(buffer);
 
-            delete MsgFromServer;
+                for(int i = 0; i < Dots->CountOfDots; i++)
+                {
+                    QGraphicsPixmapItem* item = scene->addPixmap(NotBUNG);
+                    item->setPos(322 + 24 * Dots->CoorDots[i].PosX, 102 + 24 * Dots->CoorDots[i].PosY);
+                }
+
+                delete Dots;
+            }
         }
         else if(type == enemy_shot)
         {
-            recv(ClientSocket, &buffer[1], sizeof(Message) - sizeof(int16_t), MSG_NOSIGNAL);
+            recv(ClientSocket, &buffer[1], sizeof(int16_t), MSG_NOSIGNAL);
+            ResultOfShot Result = static_cast<ResultOfShot>(buffer[1]);
 
-            Message* MsgFromServer = convertToStruct(buffer, type);
-
-            int16_t PosX = MsgFromServer->PosX;
-            int16_t PosY = MsgFromServer->PosY;
-            ResultOfShot Result = static_cast<ResultOfShot>(MsgFromServer->Result);
-
-            if(Result == hit)
+            if(Result == not_hit)
             {
-                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
-                item->setPos(20 + 24 * PosX, 102 + 24 * PosY);
-            }
-            else if(Result == not_hit)
-            {
+                recv(ClientSocket, &buffer[2], sizeof(Message) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+                Message* MsgFromServer = convertToMessage(buffer);
+
+                int16_t PosX = MsgFromServer->PosX;
+                int16_t PosY = MsgFromServer->PosY;
+
                 QGraphicsPixmapItem* item = scene->addPixmap(NotBUNG);
                 item->setPos(20 + 24 * PosX, 102 + 24 * PosY);
+
+                delete MsgFromServer;
+            }
+            else if(Result == hit)
+            {
+                recv(ClientSocket, &buffer[2], sizeof(Message) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+                Message* MsgFromServer = convertToMessage(buffer);
+
+                int16_t PosX = MsgFromServer->PosX;
+                int16_t PosY = MsgFromServer->PosY;
+
+                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
+                item->setPos(20 + 24 * PosX, 102 + 24 * PosY);
+
+                delete MsgFromServer;
             }
             else if(Result == kill)
             {
-                QGraphicsPixmapItem* item = scene->addPixmap(BUNG);
-                item->setPos(20 + 24 * PosX, 102 + 24 * PosY);
-            }
+                recv(ClientSocket, &buffer[2], sizeof(DotsAroundShip) - 2 * sizeof(int16_t), MSG_NOSIGNAL);
+                DotsAroundShip* Dots = convertToDAS(buffer);
 
-            delete MsgFromServer;
+                for(int i = 0; i < Dots->CountOfDots; i++)
+                {
+                    QGraphicsPixmapItem* item = scene->addPixmap(NotBUNG);
+                    item->setPos(20 + 24 * Dots->CoorDots[i].PosX, 102 + 24 * Dots->CoorDots[i].PosY);
+                }
+
+                delete Dots;
+            }
         }
     }
 }
 
-
-Message* MainWindow::convertToStruct(int16_t* buffer, Msg_type type)
+DotsAroundShip* MainWindow::convertToDAS(int16_t* buffer)
 {
-    if((type == result_of_shot) || (type == enemy_shot))
+    DotsAroundShip* NewMessage = new DotsAroundShip;
+
+    NewMessage->type = buffer[0];
+    NewMessage->Result = buffer[1];
+    NewMessage->CountOfDots = buffer[2];
+
+    int count = 3;
+
+    for(int i = 0; i < NewMessage->CountOfDots; i++)
     {
-        Message* NewMessage = new Message;
+        NewMessage->CoorDots[i].PosX = buffer[count];
+        NewMessage->CoorDots[i].PosY = buffer[count + 1];
 
-        NewMessage->type = buffer[0];
-        NewMessage->PosX = buffer[1];
-        NewMessage->PosY = buffer[2];
-        NewMessage->Result = buffer[3];
-
-        return NewMessage;
+        count += 2;
     }
+
+    return NewMessage;
+}
+
+Message* MainWindow::convertToMessage(int16_t* buffer)
+{
+    Message* NewMessage = new Message;
+
+    NewMessage->type = buffer[0];
+    NewMessage->Result = buffer[1];
+    NewMessage->PosX = buffer[2];
+    NewMessage->PosY = buffer[3];
+
+    return NewMessage;
 }
