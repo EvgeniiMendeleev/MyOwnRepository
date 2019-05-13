@@ -8,9 +8,10 @@
 #include <iostream>
 #include <clocale>
 #include <fcntl.h>
+
 using namespace std;
 
-enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips, Ready, WaitingOfTurn, Turn};
+enum states {WaitingOfReadyPlayer, WaitingOfConnection, Win, Lose, PlacingShips, Battle, Ready, WaitingOfTurn, Turn};
 enum Msg_type {result_of_shot, enemy_shot, state_for_client, error};
 enum ResultOfShot {not_hit, hit, kill};
 
@@ -20,17 +21,25 @@ struct Shot
 	int16_t PosY;
 };
 
+struct  DotsAroundShip
+{
+	int16_t type;
+	int16_t Result = static_cast<int16_t>(kill);
+	int16_t CountOfDots;
+	Shot CoorDots[14];
+};
+
 struct Message
 {
 	int16_t type;
+	int16_t Result;
 	int16_t PosX;
 	int16_t PosY;
-	int16_t Result;
 };
 
 struct StateForClient
 {
-	int16_t type = static_cast<state_for_client>;
+	int16_t type = static_cast<int16_t>(state_for_client);
 	int16_t state;
 };
 
@@ -86,18 +95,30 @@ bool DeadShips(int* LifeOfShip)
 	}
 }
 
-void BurnAroundShip(int16_t* Field, int i0, int j0, int k, int l)
+void BurnAroundShip(int16_t* Field, DotsAroundShip* Burned, int i0, int j0, int k, int l)
 {
+	int count = 0;
+
 	for(int i = i0; i <= k; i++)
 	{
 		for(int j = j0; j <= l; j++)
 		{
-			Field[10 * i + j] = -11;
+			if(Field[10 * i + j] == 0)
+			{
+				Burned->CoorDots[count].PosX = j;
+				Burned->CoorDots[count].PosY = i;
+				
+				++count;
+			}
+                                Field[10 * i + j] = -11;
+
 		}
 	}
+
+	Burned->CountOfDots = count;
 }
 
-void FindBurnedShip(int16_t* Field, int16_t shipID)
+void FindBurnedShip(int16_t* Field, int16_t shipID, DotsAroundShip* Burned)
 {
 	int typeOfShip;
 
@@ -177,43 +198,43 @@ void FindBurnedShip(int16_t* Field, int16_t shipID)
 		{
 			if(ShipJ - 1 < 0)		//Верхний левый угол
 			{
-				BurnAroundShip(Field, ShipI, ShipJ, ShipI + 1, ShipJ + typeOfShip);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ, ShipI + 1, ShipJ + typeOfShip);
 			}
 			else if(ShipJ + typeOfShip > 9)	//Верхний правый угол
 			{
-				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
 			}
 			else		//Просто верх
 			{
-				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
 			}
 		}
 		else if(ShipI + 1 > 9)	//Низ
 		{
 			if(ShipJ - 1 < 0)	//Нижний левый угол
 			{	
-				BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI, ShipJ + typeOfShip);
+				BurnAroundShip(Field, Burned, ShipI - 1, ShipJ, ShipI, ShipJ + typeOfShip);
 			}
 			else if(ShipJ + typeOfShip > 9)	//Нижний правый угол
 			{
-				BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip - 1);
+				BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip - 1);
 			}
 			else		//Просто низ
 			{
-				BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip);
+				BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI, ShipJ + typeOfShip);
 			}
 		}
 		else if(ShipJ - 1 < 0)	//Левый бок
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + 1, ShipJ + typeOfShip);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ, ShipI + 1, ShipJ + typeOfShip);
 		}
 		else if(ShipJ + typeOfShip > 9)	//Правый бок
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip - 1);
 		}
 		else	//Не по краям
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + 1, ShipJ + typeOfShip);
 		}
 	}
 	else
@@ -222,50 +243,52 @@ void FindBurnedShip(int16_t* Field, int16_t shipID)
 		{
 			if(ShipJ - 1 < 0)	//Верхний левый
 			{
-				BurnAroundShip(Field, ShipI, ShipJ, ShipI + typeOfShip, ShipJ + 1);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ, ShipI + typeOfShip, ShipJ + 1);
 			}
 			else if(ShipJ + 1 > 9)	//Верхний правый
 			{
-				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ);
 			}
 			else		//Просто верх
 			{
-				BurnAroundShip(Field, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
+				BurnAroundShip(Field, Burned, ShipI, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
 			}
 		}
 		else if(ShipI + typeOfShip > 9)	//Низ
 		{
                         if(ShipJ - 1 < 0)    //Нижний левый
                         {
-                                BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + typeOfShip - 1, ShipJ + 1);
+                                BurnAroundShip(Field, Burned, ShipI - 1, ShipJ, ShipI + typeOfShip - 1, ShipJ + 1);
                         }
                         else if(ShipJ + 1 > 9)       //Нижний правый
                         {
-                                BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ);
+                                BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ);
                         }
                         else			//Просто низ
                         {
-                                BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ + 1);
+                                BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + typeOfShip - 1, ShipJ + 1);
                         }
 
 		}
 		else if(ShipJ - 1 < 0)	//Левый бок
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ, ShipI + typeOfShip, ShipJ + 1);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ, ShipI + typeOfShip, ShipJ + 1);
 		}
 		else if(ShipJ + 1 > 9)	//Правый бок
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ);
 		}
 		else	//Не по краям
 		{
-			BurnAroundShip(Field, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
+			BurnAroundShip(Field, Burned, ShipI - 1, ShipJ - 1, ShipI + typeOfShip, ShipJ + 1);
 		}
 	}
 }
 
 void* DataFromFirstClient(void* NullData)
 {
+	StateForClient stateFP;
+	
 	stateOfFirstPlayer = PlacingShips;
 	recv(FirstPlayer, &FieldOfFP, 100 * sizeof(int16_t), MSG_NOSIGNAL);
 	stateOfFirstPlayer = Ready;
@@ -277,12 +300,14 @@ void* DataFromFirstClient(void* NullData)
 	if(stateOfSecondPlayer == PlacingShips)
 	{
 		stateOfFirstPlayer = WaitingOfReadyPlayer;
-		//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+		stateFP.state = static_cast<int16_t>(stateOfFirstPlayer);
+		send(FirstPlayer, &stateFP, sizeof(stateFP), MSG_NOSIGNAL);
 		while(stateOfSecondPlayer != Ready);
 	}
 
 	stateOfFirstPlayer = Turn;
-	//send(*firstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+	stateFP.state = static_cast<int16_t>(Battle);
+	send(FirstPlayer, &stateFP, sizeof(stateFP), MSG_NOSIGNAL);
 
     	/*
          * Информация о кораблях противника.
@@ -317,7 +342,12 @@ void* DataFromFirstClient(void* NullData)
 	fcntl(FirstPlayer, F_SETFL, O_NONBLOCK);
 
 	bool DeadAllShips = false;
+	bool BurnArea = false;
 
+	DotsAroundShip DotsFP, DotsSP;
+	DotsFP.type = static_cast<int16_t>(result_of_shot);
+	DotsSP.type = static_cast<int16_t>(enemy_shot);
+	
 	while(!DeadAllShips && (stateOfSecondPlayer != Win))
 	{
 		Shot* InfoFromClient = new Shot;
@@ -331,7 +361,7 @@ void* DataFromFirstClient(void* NullData)
 		}
 		else
 		{
-			if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] > 0)
+			if(FieldOfSP[10 * InfoFromClient->PosY + InfoFromClient->PosX] >= 0)
 			{
 				Message MsgForFP, MsgForSP;
 
@@ -352,10 +382,25 @@ void* DataFromFirstClient(void* NullData)
 
 					if(LifeOfShip[shipID - 1] == 0)
 					{
-						FindBurnedShip(FieldOfSP, shipID);
+						FindBurnedShip(FieldOfSP, shipID, &DotsFP);
 
-						MsgForFP.Result = static_cast<int16_t>(kill);
-						MsgForSP.Result = static_cast<int16_t>(kill);
+						for(int i = 0; i < DotsFP.CountOfDots; i++)
+						{
+							DotsSP.CoorDots[i] = DotsFP.CoorDots[i];
+						}
+
+						DotsSP.CountOfDots = DotsFP.CountOfDots;
+
+						MsgForFP.Result = static_cast<int16_t>(hit);
+						MsgForSP.Result = static_cast<int16_t>(hit);
+
+						cout << "=======================================================================" << endl;
+						for(int i = 0; i < DotsFP.CountOfDots; i++)
+						{
+							cout << DotsSP.CoorDots[i].PosY << " " << DotsSP.CoorDots[i].PosX << endl;
+						}
+						cout << "=======================================================================" << endl;
+						BurnArea = true;
 					}
 					else
 					{
@@ -381,6 +426,14 @@ void* DataFromFirstClient(void* NullData)
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
 
+				if(BurnArea)
+				{
+					send(FirstPlayer, &DotsFP, sizeof(DotsFP), MSG_NOSIGNAL);
+					send(SecondPlayer, &DotsSP, sizeof(DotsSP), MSG_NOSIGNAL);
+
+					BurnArea = false;
+				}
+
 				DeadAllShips = DeadShips(LifeOfShip);
 
 				if(DeadAllShips)
@@ -400,6 +453,17 @@ void* DataFromFirstClient(void* NullData)
 		delete InfoFromClient;
 	}
 
+	sleep(3);
+
+	if(stateOfFirstPlayer != Win)
+	{
+		stateOfFirstPlayer = Lose;
+	}
+
+	stateFP.state = static_cast<int16_t>(stateOfFirstPlayer);
+
+	send(FirstPlayer, &stateFP, sizeof(stateFP), MSG_NOSIGNAL);
+
 	cout << "++++++++++++++++++++++++++++" << endl;
 	cout << "Первый поток завершил работу" << endl;
 	cout << "++++++++++++++++++++++++++++" << endl;
@@ -409,6 +473,8 @@ void* DataFromFirstClient(void* NullData)
 
 void* DataFromSecondClient(void* NullData)
 {
+	StateForClient stateSP;
+
 	stateOfSecondPlayer = PlacingShips;
 	recv(SecondPlayer, &FieldOfSP, 100 * sizeof(int16_t), MSG_NOSIGNAL);
 	stateOfSecondPlayer = Ready;
@@ -420,13 +486,15 @@ void* DataFromSecondClient(void* NullData)
 	if(stateOfFirstPlayer == PlacingShips)
 	{
 		stateOfSecondPlayer = WaitingOfReadyPlayer;
-		//send(*secondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
+		stateSP.state = static_cast<int16_t>(stateOfSecondPlayer);
+		send(SecondPlayer, &stateSP, sizeof(stateSP), MSG_NOSIGNAL);
 
 		while(stateOfFirstPlayer != Ready);
 	}
 	
 	stateOfSecondPlayer = WaitingOfTurn;
-	//send(*secondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
+	stateSP.state = static_cast<int16_t>(Battle);
+	send(SecondPlayer, &stateSP, sizeof(stateSP), MSG_NOSIGNAL);
 	
 	/*
 	 * Информация о кораблях противника.
@@ -461,6 +529,11 @@ void* DataFromSecondClient(void* NullData)
 	fcntl(SecondPlayer, F_SETFL, O_NONBLOCK);
 
 	bool DeadAllShips = false;
+	bool BurnArea = false;
+
+	DotsAroundShip DotsFP, DotsSP;
+        DotsFP.type = static_cast<int16_t>(enemy_shot);
+        DotsSP.type = static_cast<int16_t>(result_of_shot);
 
 	while(!DeadAllShips && (stateOfFirstPlayer != Win))
 	{
@@ -473,7 +546,7 @@ void* DataFromSecondClient(void* NullData)
 		}
 		else
 		{
-			if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] > 0)
+			if(FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] >= 0)
 			{
 				Message MsgForFP, MsgForSP;
 
@@ -490,14 +563,31 @@ void* DataFromSecondClient(void* NullData)
 					int16_t shipID = FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX];
 
 					--LifeOfShip[shipID - 1];
-					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosY] = -shipID;
+					FieldOfFP[10 * InfoFromClient->PosY + InfoFromClient->PosX] = -shipID;
 
 					if(LifeOfShip[shipID - 1] == 0)
 					{
-						FindBurnedShip(FieldOfFP, shipID);
+						FindBurnedShip(FieldOfFP, shipID, &DotsSP);
 
-						MsgForFP.Result = static_cast<int16_t>(kill);
-						MsgForSP.Result = static_cast<int16_t>(kill);
+						for(int i = 0; i < DotsSP.CountOfDots; i++)
+                                                {
+                                                        DotsFP.CoorDots[i] = DotsSP.CoorDots[i];
+                                                }
+
+                                                DotsFP.CountOfDots = DotsSP.CountOfDots;
+
+						MsgForFP.Result = static_cast<int16_t>(hit);
+						MsgForSP.Result = static_cast<int16_t>(hit);
+
+                                               	cout << "=======================================================================" << endl;
+                                                for(int i = 0; i < DotsFP.CountOfDots; i++)
+                                                {
+                                                        cout << DotsFP.CoorDots[i].PosY << " " << DotsFP.CoorDots[i].PosX << endl;
+                                                }
+						cout << "=======================================================================" << endl;
+                                                
+						BurnArea = true;
+
 					}
 					else
 					{
@@ -523,6 +613,14 @@ void* DataFromSecondClient(void* NullData)
 				send(FirstPlayer, &MsgForFP, sizeof(MsgForFP), MSG_NOSIGNAL);
 				send(SecondPlayer, &MsgForSP, sizeof(MsgForSP), MSG_NOSIGNAL);
 
+				if(BurnArea)
+				{
+					send(FirstPlayer, &DotsFP, sizeof(DotsFP), MSG_NOSIGNAL);
+					send(SecondPlayer, &DotsSP, sizeof(DotsSP), MSG_NOSIGNAL);
+
+					BurnArea = false;
+				}
+
 				DeadAllShips = DeadShips(LifeOfShip);
 
 				if(DeadAllShips)
@@ -542,6 +640,17 @@ void* DataFromSecondClient(void* NullData)
 		delete InfoFromClient;
 	}
 
+	sleep(3);
+
+	if(stateOfSecondPlayer != Win)
+	{
+		stateOfSecondPlayer = Lose;
+	}
+
+	stateSP.state = static_cast<int16_t>(stateOfSecondPlayer);
+
+	send(SecondPlayer, &stateSP, sizeof(stateSP), MSG_NOSIGNAL);
+
 	cout << "============================" << endl;
 	cout << "Второй поток завершил работу" << endl;
 	cout << "============================" << endl;
@@ -552,6 +661,8 @@ void* DataFromSecondClient(void* NullData)
 int main()
 {
 	setlocale(LC_ALL, "Russian");
+
+	StateForClient stateFP, stateSP;
 
 	//---------------Создание слушающего сокета---------------------
 	int MasterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -573,8 +684,11 @@ int main()
 	if(FirstPlayer > 0)
 	{
 		printf("Первый игрок подключился!\n");
+		
 		stateOfFirstPlayer = WaitingOfConnection;
-		//send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
+
+		stateFP.state = static_cast<int16_t>(stateOfFirstPlayer);
+		send(FirstPlayer, &stateFP, sizeof(stateFP), MSG_NOSIGNAL);
 	}
 	else
 	{
@@ -592,8 +706,11 @@ int main()
 		
 		stateOfFirstPlayer = stateOfSecondPlayer = PlacingShips;
 		
-		//send(FirstPlayer, &stateOfFirstPlayer, sizeof(stateOfFirstPlayer), MSG_NOSIGNAL);
-		//send(SecondPlayer, &stateOfSecondPlayer, sizeof(stateOfSecondPlayer), MSG_NOSIGNAL);
+		stateFP.state = stateOfFirstPlayer;
+		stateSP.state = stateOfSecondPlayer;
+
+		send(FirstPlayer, &stateFP, sizeof(stateFP), MSG_NOSIGNAL);
+		send(SecondPlayer, &stateSP, sizeof(stateSP), MSG_NOSIGNAL);
 	}
 	else
 	{
