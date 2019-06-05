@@ -194,19 +194,12 @@ int main(int argc, char* argv[])
 
 								fstat(DownloadFile, &InfoAboutFile);
 								
-								int16_t ByteOfFile = InfoAboutFile.st_size;
-								SendAll(ClientSocket, &ByteOfFile, sizeof(int16_t), MSG_NOSIGNAL);
+								uint32_t ByteOfFile = InfoAboutFile.st_size;
+								SendAll(ClientSocket, &ByteOfFile, sizeof(uint32_t), MSG_NOSIGNAL);
 
-								uint8_t* DataFromFile = (uint8_t*)mmap(NULL, InfoAboutFile.st_size, PROT_READ, MAP_SHARED, DownloadFile, 0);
+								uint32_t* DataFromFile = (uint32_t*)mmap(NULL, InfoAboutFile.st_size, PROT_READ, MAP_SHARED, DownloadFile, 0);
 
-								cout << "Текст файла: ";
-								for(int i = 0; i < (ByteOfFile / sizeof(char)); i++)
-								{
-									cout << DataFromFile[i];
-								}
-								cout << endl;
-
-								SendAll(ClientSocket, DataFromFile, ByteOfFile * sizeof(uint8_t), MSG_NOSIGNAL);
+								SendAll(ClientSocket, DataFromFile, ByteOfFile, MSG_NOSIGNAL);
 							}
 
 							close(DownloadFile);
