@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
 	
 
 	char port[5];
+	vector<char> IP;
 
 	int ClientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -74,9 +75,26 @@ int main(int argc, char* argv[])
 		port[j] = argv[1][i];
 		cout << port[j];
 	}
+	cout << endl;
+
+	for(int i = 0; argv[1][i] != ':'; i++)
+	{
+		IP.push_back(argv[1][i]);
+	}
+
+	char* Ip = new char[IP.size() + 1];
+
+	for(int i = 0; i < IP.size(); i++)
+	{
+		Ip[i] = IP[i];
+		cout << Ip[i];
+	}
+	cout << endl;
+
+	Ip[IP.size()] = '\0';
 
 	ServAddr.sin_port = htons(atoi(port));
-	inet_pton(AF_INET, argv[1], &(ServAddr.sin_addr));
+	inet_pton(AF_INET, Ip, &(ServAddr.sin_addr));
 
 	if(connect(ClientSocket, (struct sockaddr*) (&ServAddr), sizeof(ServAddr)) == 0)
 	{
@@ -163,23 +181,16 @@ int main(int argc, char* argv[])
 				
 				NameOfFile[position] = '\0';
 
-				int16_t ByteOfFile;
-				uint8_t* DataFromDownloadFile;
+				uint32_t ByteOfFile;
+				uint32_t* DataFromDownloadFile;
 				cout << "Файл существует в архиве сервера" << endl;
 
-				RecvAll(ClientSocket, &ByteOfFile, sizeof(int16_t), MSG_NOSIGNAL);
+				RecvAll(ClientSocket, &ByteOfFile, sizeof(uint32_t), MSG_NOSIGNAL);
 				cout << "Число элементов в файле: " << ByteOfFile << endl;
 				
-				DataFromDownloadFile = new uint8_t[ByteOfFile];
+				DataFromDownloadFile = new uint32_t[ByteOfFile];
 
-				RecvAll(ClientSocket, DataFromDownloadFile, ByteOfFile * sizeof(uint8_t), MSG_NOSIGNAL);
-
-				cout << "Текст скаченного файла: ";
-				for(int i = 0; i < ByteOfFile; i++)
-				{
-					cout << DataFromDownloadFile[i];
-				}
-				cout << endl;
+				RecvAll(ClientSocket, DataFromDownloadFile, ByteOfFile, MSG_NOSIGNAL);
 
 				int NewFile = open(NameOfFile, O_CREAT | O_RDWR, 0600);
 				ftruncate(NewFile, ByteOfFile);
@@ -189,7 +200,7 @@ int main(int argc, char* argv[])
 					cout << "Ошибка с созданием файла" << endl;
 				}
 
-				char* Data = new char[ByteOfFile];
+				char32_t* Data = new char32_t[ByteOfFile];
 
 				for(int i = 0; i < ByteOfFile; i++)
 				{
