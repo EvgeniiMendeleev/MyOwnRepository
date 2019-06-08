@@ -182,15 +182,10 @@ int main(int argc, char* argv[])
 				NameOfFile[position] = '\0';
 
 				uint32_t ByteOfFile;
-				uint32_t* DataFromDownloadFile;
 				cout << "Файл существует в архиве сервера" << endl;
 
 				RecvAll(ClientSocket, &ByteOfFile, sizeof(uint32_t), MSG_NOSIGNAL);
 				cout << "Число элементов в файле: " << ByteOfFile << endl;
-				
-				DataFromDownloadFile = new uint32_t[ByteOfFile];
-
-				RecvAll(ClientSocket, DataFromDownloadFile, ByteOfFile, MSG_NOSIGNAL);
 
 				int NewFile = open(NameOfFile, O_CREAT | O_RDWR, 0600);
 				ftruncate(NewFile, ByteOfFile);
@@ -200,21 +195,12 @@ int main(int argc, char* argv[])
 					cout << "Ошибка с созданием файла" << endl;
 				}
 
-				char32_t* Data = new char32_t[ByteOfFile];
+				uint32_t* DataFromCreateFile = (uint32_t*)mmap(NULL, ByteOfFile, PROT_WRITE|PROT_READ, MAP_SHARED, NewFile, 0);
 
-				for(int i = 0; i < ByteOfFile; i++)
-				{
-					Data[i] = DataFromDownloadFile[i];
-				}
+				cout << "RecvAll = " << RecvAll(ClientSocket, DataFromCreateFile, ByteOfFile, MSG_NOSIGNAL) << endl;
 
-				if(write(NewFile, Data, ByteOfFile) >= 0)
-				{
-					cout << "Данные успешно записаны в файл" << endl;
-				}
-
+				munmap(DataFromCreateFile, ByteOfFile);
 				close(NewFile);
-				delete[] Data;
-				delete[] DataFromDownloadFile;
 				delete[] NameOfFile;
 			}
 
