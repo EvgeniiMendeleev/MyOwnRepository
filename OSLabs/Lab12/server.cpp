@@ -32,6 +32,7 @@ int SendAll(int socket, void* buffer, int len, int flags)
 
 	if(n == -1)
 	{
+		perror("Ошибка SendAll: ");
 		return -1;
 	}
 	else
@@ -57,12 +58,6 @@ int RecvAll(int socket, void* buffer, int len, int flags)
 	if(n == -1)
 	{
 		perror("Не все байты получены\n");
-		
-		if(errno == EFAULT)
-		{
-			cout << "Ябадабадууууу!"<<endl;
-		}
-
 		return -1;
 	}
 	else
@@ -175,13 +170,14 @@ int main(int argc, char* argv[])
 							int DownloadFile = open(NameOfFile, O_RDONLY, 0600);
 							int16_t Access;
 
-							if(DownloadFile == -1)
+							if(DownloadFile == - 1)
 							{
 								if(errno == ENOENT)
 								{
 									cout << "Указанный файл не существует" << endl;
 									Access = 0;
 									SendAll(ClientSocket, &Access, sizeof(int16_t), MSG_NOSIGNAL);
+							
 								}
 							}
 							else
@@ -195,11 +191,15 @@ int main(int argc, char* argv[])
 								fstat(DownloadFile, &InfoAboutFile);
 								
 								uint32_t ByteOfFile = InfoAboutFile.st_size;
+								
+								cout << "ByteOfFile = " << ByteOfFile << endl;
 								SendAll(ClientSocket, &ByteOfFile, sizeof(uint32_t), MSG_NOSIGNAL);
 
-								uint32_t* DataFromFile = (uint32_t*)mmap(NULL, InfoAboutFile.st_size, PROT_READ, MAP_SHARED, DownloadFile, 0);
+								uint32_t* DataFromFile = (uint32_t*)mmap(NULL, ByteOfFile, PROT_READ, MAP_SHARED, DownloadFile, 0);
 
-								SendAll(ClientSocket, DataFromFile, ByteOfFile, MSG_NOSIGNAL);
+
+								cout << "SendAll = " << SendAll(ClientSocket, DataFromFile, ByteOfFile, MSG_NOSIGNAL) << endl;
+								munmap(DataFromFile, ByteOfFile);
 							}
 
 							close(DownloadFile);
